@@ -15,11 +15,14 @@ namespace ErrorCorrection
         [STAThread]
         static void Main()
         {
+            MultTestCase();
+            return;
+
             int mult;
             int divide;
 
             Stopwatch watch = new Stopwatch();
-            Thread.Sleep( 250; );
+            Thread.Sleep( 250 );
             Thread.SpinWait( 1000 );
 
             watch.Start();
@@ -34,8 +37,6 @@ namespace ErrorCorrection
             divide = field.Divide( 11, 10 );
             watch.Stop();
 
-            Console.Out.WriteLine( "10 * 13 = " + mult );
-            Console.Out.WriteLine( "10 / 11 = " + divide );
             Console.Out.WriteLine( "Elapsed: " + watch.ElapsedTicks / (10.0*1000.0) );
             
             // GF(2^8) with field generatory poly p(x) = x^8 + x^4 + x^3 + x^2 + 1 ---> 100011101 == 285 == 0x011D
@@ -43,6 +44,21 @@ namespace ErrorCorrection
             //AntiduhEncoder encoder = new AntiduhEncoder( 8, 239, 0x011D );
 
             Console.Out.Flush();
+        }
+
+        private static void MultTestCase()
+        {
+            int[] left = new int[] { 1, 2 };
+            int[] right = new int[] { 3, 4 };
+            int[] result;
+    
+            GaloisField field = new GaloisField( 16, 0x13 );
+            //GaloisField field = new GaloisField( 256, 0x011D );
+
+            result = field.PolyMult( left, right );
+
+            Console.Out.WriteLine( field.Mult(3,7) ); 
+
         }
 
         public static void PrintList( List<int> list )
