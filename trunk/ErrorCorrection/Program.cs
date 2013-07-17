@@ -35,7 +35,7 @@ namespace ErrorCorrection
 
             watch.Start();
 
-            for( int i = 0; i < 1; i++ )
+            for( int i = 0; i < 500000; i++ )
             {
                 encoder.Encode( message );
             }
