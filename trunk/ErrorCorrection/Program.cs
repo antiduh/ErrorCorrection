@@ -15,34 +15,39 @@ namespace ErrorCorrection
         [STAThread]
         static void Main()
         {
-            MultTestCase();
-            return;
-
-            int mult;
-            int divide;
-
             Stopwatch watch = new Stopwatch();
             Thread.Sleep( 250 );
             Thread.SpinWait( 1000 );
 
-            watch.Start();
 
             // GF(2^4), with field generator poly p(x) = x^4 + x + 1 --> 10011 == 19 == 0x13
-            // n = 15, k = 11, 2t = 4
+            // size = 16, n = 15, k = 11, 2t = 4
             AntiduhEncoder encoder = new AntiduhEncoder( 4, 11, 0x13 );
+            int[] message = new int[] { 0, 0, 0, 0, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
 
-            GaloisField field = new GaloisField( 16, 0x13 );
-
-            mult = field.Mult( 10, 13 );
-            divide = field.Divide( 11, 10 );
-            watch.Stop();
-
-            Console.Out.WriteLine( "Elapsed: " + watch.ElapsedTicks / (10.0*1000.0) );
-            
             // GF(2^8) with field generatory poly p(x) = x^8 + x^4 + x^3 + x^2 + 1 ---> 100011101 == 285 == 0x011D
             // n = 255, k = 239, 2t = 16
             //AntiduhEncoder encoder = new AntiduhEncoder( 8, 239, 0x011D );
 
+
+            //GaloisField field = new GaloisField( 16, 0x13 );
+
+
+            watch.Start();
+
+            for( int i = 0; i < 1; i++ )
+            {
+                encoder.Encode( message );
+            }
+
+
+            watch.Stop();
+
+            Console.Out.WriteLine( GaloisField.PolyPrint( message ) );
+
+            Console.Out.WriteLine( "Elapsed: " + watch.ElapsedMilliseconds );
+            
+            
             Console.Out.Flush();
         }
 

@@ -107,13 +107,6 @@ namespace ErrorCorrection
             }
         }
 
-        private void BuildCodeGenPoly()
-        {
-            // Code gen poly is degree m; that is, GF(2^4) has a g(x) with terms:
-            // a*x^4 + b*x^3 + c*x^2 + + d*x^1 + e*x^0
-
-
-        }
 
         public int Mult( int left, int right )
         {
@@ -256,10 +249,7 @@ namespace ErrorCorrection
             return result;
         }
 
-        public int[] PolyModulus( int[] dividend, int[] divisor )
-        {
-            return null;
-        }
+       
 
         public static string PolyPrint( int[] poly )
         {
