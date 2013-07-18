@@ -17,11 +17,13 @@ namespace ErrorCorrection
     /// <remarks>
     /// This class is not thread safe.
     /// </remarks>
-    public class AntiduhEncoder
+    public sealed class AntiduhEncoder
     {
-        private int symbolWidth;
+        private readonly int size;
 
-        private int numDataSymbols;
+        private readonly int numDataSymbols;
+
+        private readonly int checkBytes;
 
         /// <summary>
         /// Stores the code generator polynomial.
@@ -30,7 +32,7 @@ namespace ErrorCorrection
         /// The highest-degree monomial in the code generator polynomial is not used
         /// during the encoding process.
         /// </remarks>
-        private int[] codeGenPoly;
+        private readonly int[] codeGenPoly;
 
         /// <summary>
         /// Buffer used to store the accumulating result during the encoding/modulus 
@@ -38,18 +40,13 @@ namespace ErrorCorrection
         /// </summary>
         private int[] modulusResult;
 
-        /// <summary>
-        /// Buffer used to store an intermediate calculation during the encoding/modulus 
-        /// operation.
-        /// </summary>
-        private int[] modulusY;
+        private readonly GaloisField gf;
 
-        private GaloisField gf;
-
-        public AntiduhEncoder( int symbolWidth, int numDataSymbols, int fieldGenPoly )
+        public AntiduhEncoder( int size, int numDataSymbols, int fieldGenPoly )
         {
-            this.symbolWidth = symbolWidth;
+            this.size = size;
             this.numDataSymbols = numDataSymbols;
+            this.checkBytes = (size - 1) - numDataSymbols;
 
             // symbolWidth is the number of bits per symbol, eg, GF(2^symbolWidth);
             // Code word size n is n = 2^symbolWidth - 1
@@ -57,12 +54,11 @@ namespace ErrorCorrection
             // Say we choose symbolWidth = 4, numDataSymbols = 11.
             // That gives GF(2^4), n = 15, k = 11, 2t = 4.
 
-            this.gf = new GaloisField( 1 << symbolWidth, fieldGenPoly );
+            this.gf = new GaloisField( size, fieldGenPoly );
 
-            BuildCodeGenPoly();
+            codeGenPoly = BuildCodeGenPoly();
 
-            this.modulusResult = new int[symbolWidth];
-            this.modulusY = new int[symbolWidth];
+            this.modulusResult = new int[checkBytes];
         }
 
         /// <summary>
@@ -80,7 +76,7 @@ namespace ErrorCorrection
         /// The encoding process ignores the highest-degree monomial in the code generation 
         /// polynomial. The extra term is still produced and stored, however it is not used.
         /// </remarks>
-        private void BuildCodeGenPoly()
+        private int[] BuildCodeGenPoly()
         {
             // Example:
             //   - GF(2^4) with p(x) = x^4 + x + 1.
@@ -111,7 +107,7 @@ namespace ErrorCorrection
             // This is a polynomial of degree 4, but has 5 monomials.
 
 
-            int numElements = (1 << symbolWidth) - numDataSymbols - 1;
+            int numElements = size - numDataSymbols - 1;
 
             List<int[]> polys = new List<int[]>( numElements );
 
@@ -135,8 +131,7 @@ namespace ErrorCorrection
                 current = gf.PolyMult( current, polys[i] );
             }
 
-            this.codeGenPoly = current;
-            
+            return current;
         }
 
         /// <summary>
@@ -232,13 +227,12 @@ namespace ErrorCorrection
             int z_0;
             int r;
             int[] z = this.modulusResult;
-            int[] y = this.modulusY;
             int[] g = this.codeGenPoly;
             
             // ------------ Init ----------
 
             // Clear the bytes that are supposed to be zero in the message.
-            Array.Clear( message, 0, symbolWidth );
+            Array.Clear( message, 0, checkBytes );
 
             // Step 0.1 -- Z = {0,0,0,0};
             Array.Clear( z, 0, z.Length );
@@ -246,43 +240,49 @@ namespace ErrorCorrection
             // Step 0.2 -- z_0 = 0.
             z_0 = 0;
 
-            // Loop from x^14 to x^4
-
-            for( int i = message.Length - 1; i >= symbolWidth; i-- )
+            // Loop from, eg, x^14 to x^5
+            // Note, we don't run the loop on the last message byte.
+            // Thats because after we process the last message byte, we don't do the z fudge crap.
+            // So we do that manually after the loop, instead of putting a conditional in the loop.
+            for( int i = message.Length - 1; i > checkBytes; i-- )
             {
                 // Step 1 -- r = z_0 - x^i
                 r = z_0 ^ message[i];
 
                 // Step 2 -- Y = g'(x) * r
-                for( int yIter = 0; yIter < y.Length; yIter++ )
-                {
-                    y[yIter] = gf.Mult( g[yIter], r );
-                }
-
                 // Step 3 -- Z = Z - Y
                 for( int zIter = 0; zIter < z.Length; zIter++ )
                 {
-                    z[zIter] = z[zIter] ^ y[zIter];
+                    z[zIter] ^= gf.TableMult( g[zIter], r );
                 }
 
-                if( i > symbolWidth )
+                // Step 4 -- z_0 and Z fudge.
+                // Extract z_0 from Z.
+                z_0 = z[z.Length - 1];
+
+                // Shift Z.
+                for( int zIter = z.Length - 1; zIter >= 1; zIter-- )
                 {
-                    // Step 4 -- z_0 and Z fudge.
-                    // Extract z_0 from Z.
-                    z_0 = z[z.Length - 1];
-
-                    // Shift Z.
-                    for( int zIter = z.Length - 1; zIter >= 1; zIter-- )
-                    {
-                        z[zIter] = z[zIter - 1];
-                    }
-
-                    z[0] = 0;
+                    z[zIter] = z[zIter - 1];
                 }
+
+                z[0] = 0;
             }
 
-            // Write z to the zero-bytes in the message.
+            // Perform the first part of the algorithm for the last byte.
+            // We don't mess with z after processing the last message byte, so we have to 
+            // perform this logic outside of the loop, or put a conditional in the loop.
+            r = z_0 ^ message[checkBytes];
 
+            // Step 2 -- Y = g'(x) * r
+            // Step 3 -- Z = Z - Y
+            for( int zIter = 0; zIter < z.Length; zIter++ )
+            {
+                z[zIter] ^= gf.TableMult( g[zIter], r );
+            }
+
+
+            // Write z to the zero-bytes in the message.
             for( int i = 0; i < z.Length; i++ )
             {
                 message[i] = z[i];
