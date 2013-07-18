@@ -36,6 +36,8 @@ namespace ErrorCorrection
 
         private int[] codeGenPoly;
 
+        private int[,] multTable;
+
         public GaloisField( int size, int fieldGenPoly )
         {
             this.size = size;
@@ -44,6 +46,7 @@ namespace ErrorCorrection
 
             BuildField();
             BuildLogarithms();
+            BuildMultTable();
         }
 
         public List<int> Field { get; private set; }
@@ -107,6 +110,23 @@ namespace ErrorCorrection
             }
         }
 
+        private void BuildMultTable()
+        {
+            this.multTable = new int[this.size, this.size];
+
+            for( int left = 0; left < size; left++ )
+            {
+                for( int right = 0; right < size; right++ )
+                {
+                    this.multTable[left, right] = Mult( left, right );
+                }
+            }
+        }
+
+        public int TableMult( int left, int right )
+        {
+            return this.multTable[left, right];
+        }
 
         public int Mult( int left, int right )
         {
@@ -167,6 +187,8 @@ namespace ErrorCorrection
 
             // Note the extra '... + size - 1' term. This is to push the subtraction above
             // zero, so that the modulus operator will do the right thing.
+            // (10 - 11) % 5 == -1  wrong
+            // ((10 - 11) + 5) % 5 == 4 right
             dividend = ( dividend - divisor + ( size - 1 ) ) % ( size - 1 );
 
             return this.Field[dividend + 1];
