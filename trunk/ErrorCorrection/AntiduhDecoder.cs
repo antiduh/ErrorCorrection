@@ -44,6 +44,8 @@ namespace ErrorCorrection
 
             errorLocator = BerklekampErrorLocator( syndroms );
 
+            int[] errorIndexes = ChienSearch( errorLocator );
+
             Console.Out.Write( errorLocator[0] );
         }
 
@@ -177,6 +179,53 @@ namespace ErrorCorrection
             }
 
             return dPoly;
+        }
+
+        private int[] ChienSearch( int[] lambda )
+        {
+            int[] eLocs = new int[size - 1];
+
+            // The chien search evaluates the lamba polynomial for the multiplicate inverse 
+            // each element in the field other than 0.
+            // Eg,
+            // eLocs[i] = gf.EvalPoly(lambda, gf.Divide( 1, gf.Field[i] );
+            //
+            // This method does a significant amount of converting back-and-fourth between
+            // representation of terms, and so instead, we evalute one term in the polynomial,
+            // add it to the right spot in errorPositions, evaluate the next term, etc.
+            //
+            // eg, say that lamba was D(x) = 14x^2 + 14x + 1.
+            // 
+
+            for( int i = 0; i < eLocs.Length; i++ )
+            {
+                eLocs[i] = gf.PolyEval(
+                    lambda,
+                    gf.Divide( 1, gf.Field[i+1] )
+                );
+            }
+
+            /*
+            // Evaluate the constant term in the polynomial.
+            for( int i = 0; i < eLocs.Length; i++ )
+            {
+                eLocs[i] = lambda[0];
+            }
+
+            // Evaluate each non-constant term.
+            int lambdaLog;
+
+            for( int lambdaIndex = 1; lambdaIndex < lambda.Length; lambdaIndex++ )
+            {
+                // Evaluate the nth monomial in lambda.
+                // First, look up with logarithm the current lambda corresponds to.
+                // If lambda[i] = 14, then 14 is a^11. so lambdaLog is 11.
+                lambdaLog = gf.Logarithms[lambda[lambdaIndex]];
+            }
+            */
+
+
+            return eLocs;
         }
 
         // EG, if g(x) = (x+a^0)(x+a^1)(x+a^2)(x+a^3) 

@@ -15,16 +15,40 @@ namespace ErrorCorrection
         [STAThread]
         static void Main()
         {
+            int[] syndroms = new int[] { 15, 3, 4, 12 };
+            int[] omega = new int[] { 14, 3 };
+            int[] lambda = new int[] { 9, 7, 7};
+            GaloisField field = new GaloisField( 16, 0x13 );
+
+            int[] result = field.PolyMult( lambda, omega );
+
+            Console.Out.WriteLine( result[0] );
+
+            //DecoderTest();
+
+            /*
+            GaloisField field = new GaloisField( 16, 0x13 );
+            int[] errorPoly = new int[] { 1, 14, 14 };
+
+            // a^-14 = a^1 = 2
+            // a^-13 = a^2 = 4
+            int eval = field.PolyEval( errorPoly, 4 );
+            
+            Console.Out.WriteLine( eval );
+             */
+
+            Console.Out.Flush();
+        }
+
+        private static void DecoderTest()
+        {
             AntiduhDecoder decoder = new AntiduhDecoder( 16, 11, 0x13 );
             //                                       V                      V
             // Note the following errors:    12, 12, 3, 3, 11, 10, 9, 8, 7, 6 , 5, 4, 3, 2, 1 
             int[] errorMessage = new int[] { 12, 12, 1, 3, 11, 10, 9, 8, 7, 11, 5, 4, 3, 2, 1 };
 
             decoder.Decode( errorMessage );
-            
-            Console.Out.Flush();
         }
-
 
         private static void EncoderTest()
         {
