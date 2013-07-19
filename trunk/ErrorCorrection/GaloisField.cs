@@ -271,7 +271,41 @@ namespace ErrorCorrection
             return result;
         }
 
-       
+        public int PolyEval( int[] poly, int x )
+        {
+            int sum;
+            int xLog;
+            int coeffLog;
+            int power;
+
+            // The constant term in the poly requires no multiplication.
+            sum = poly[0];
+
+            xLog = Logarithms[x];
+
+            for( int i = 1; i < poly.Length; i++ )
+            {
+                // The polynomial at this spot has some coefficent, call it a^j.
+                // x itself has some value, call it a^k.
+                // x is raised to some power, which is 'i' in the loop.
+                // a^j * (a^k)^i 
+                //    == a^j * a^(k*i)
+                //    == a^(j+k+i) 
+                // Remember that exponents are added modulo 'size - 1', because the field elements
+                // are {0, a^0, a^1, ... } - we use size - 1 because we don't use 0.
+
+                // If the coeff is 0, then this monomial contributes no value to the sum.
+                if( poly[i] == 0 ) { continue; }
+
+                coeffLog = Logarithms[poly[i]];
+
+                // Add the powers together, then lookup which a^L you ended up with.
+                power = ( coeffLog + xLog * i) % ( size - 1 );
+                sum ^= Field[power+1];
+            }
+
+            return sum;
+        }
 
         public static string PolyPrint( int[] poly )
         {
