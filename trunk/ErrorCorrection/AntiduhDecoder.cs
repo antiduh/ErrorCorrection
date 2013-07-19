@@ -35,27 +35,36 @@ namespace ErrorCorrection
         public void Decode( int[] message )
         {
             int[] syndroms = new int[numCheckBytes];
+            int[] errorLocator;
 
             for( int i = 0; i < syndroms.Length; i++ )
             {
                 syndroms[i] = CalcSyndrom( message, gf.Field[i + 1] );
             }
+
+            errorLocator = BerklekampErrorLocator( syndroms );
+
+            Console.Out.Write( errorLocator[0] );
         }
 
         private int[] BerklekampErrorLocator(int[] syndroms)
         {
+            // Explanation of terms:
             // S  = S(x)     - syndrom polynomial
             // C  = C(x)     - correction polynomial
             // D  = 'lamba'(x) - error locator estimate polynomial.
             // D* = 'lambda-star'(x) - a new error locator estimate polynomial.
             // S_x = the element at index 'x' in S, eg, if S = {5,6,7,8}, then S_0 = 5, S_1 = 6, etc.
-            // 
+            // 2T  = the number of error correction symbols, eg, numCheckBytes.
+            //       T must be >= 1, so 2T is guarenteed to be at least 2. 
             //
             // Start with 
             //   K = 1;
             //   L = 0; 
             //   C = 0x^n + ... + 0x^2 + x + 0 aka {0,1,0, ...};
-            //   D = 0x^n + ... + 0x^2 + 0x + 1 aka {1,0,0,...}
+            //   D = 0x^n + ... + 0x^2 + 0x + 1 aka {1,0,0,...};
+            //     Both C and D are guarenteed to be at least 2 elements, which is why they can have
+            //     hardcoded initial values.
 
             // Step 1: Calculate e.
             // --------------
@@ -94,15 +103,78 @@ namespace ErrorCorrection
             //   If K <= 2T goto 1
             //   Else, D(x) is the error locator polynomial.
 
+            // the C(x) polynomial.
             int[] corr = new int[numCheckBytes - 1];
+            
+            // The lamda(x) aka D(x) polynomial
             int[] dPoly = new int[numCheckBytes - 1];
-            int[] nextDPoly = new int[numCheckBytes - 1];
+
+            // The lambda-star(x) aka D*(x) polynomial.
+            int[] dStarPoly = new int[numCheckBytes - 1];
 
             int k;
             int l;
             int e;
+            int eInv; // temp to store calculation of 1 / e aka e^(-1)
+
+            // --- Initial conditions ----
+            k = 1;
+            l = 0;
+            corr[1] = 1;
+            dPoly[0] = 1;
 
 
+            while( k <= numCheckBytes )
+            {            
+                // --- Calculate e ---
+                e = syndroms[k - 1];
+
+                for( int i = 1; i <= l; i++ )
+                {
+                    e ^= gf.Mult( dPoly[i], syndroms[k - 1 - i]);
+                }
+
+                // --- Update estimate if e != 0 ---
+                if( e != 0 )
+                {
+                    // D*(x) = D(x) + e * C(x);
+                    for( int i = 0; i < dStarPoly.Length; i++ )
+                    {
+                        dStarPoly[i] = dPoly[i] ^ gf.TableMult( e, corr[i] );
+                    }
+
+                    if( 2 * l < k )
+                    {
+                        // L = K - L;
+                        l = k - l;
+
+                        // C(x) = D(x) * e^(-1);
+                        eInv = gf.Divide( 1, e );
+                        for( int i = 0; i < corr.Length; i++ )
+                        {
+                            corr[i] = gf.TableMult( dPoly[i], eInv );
+                        }
+                    }
+                }
+
+                // --- Advance C(x) ---
+
+                // C(x) = C(x) * x
+                for( int i = corr.Length - 1; i >= 1; i-- )
+                {
+                    corr[i] = corr[i - 1];
+                }
+                corr[0] = 0;
+
+                if( e != 0 )
+                {
+                    // D(x) = D*(x);
+                    Array.Copy( dStarPoly, dPoly, dPoly.Length );
+                }
+
+                k += 1;
+
+            }
 
             return dPoly;
         }
