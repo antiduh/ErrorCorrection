@@ -36,6 +36,8 @@ namespace ErrorCorrection
         {
             int[] syndroms = new int[numCheckBytes];
             int[] errorLocator;
+            int[] omega;
+            int[] errorIndexes;
 
             for( int i = 0; i < syndroms.Length; i++ )
             {
@@ -43,10 +45,11 @@ namespace ErrorCorrection
             }
 
             errorLocator = BerklekampErrorLocator( syndroms );
+            omega = CalcOmega( syndroms, errorLocator );
 
-            int[] errorIndexes = ChienSearch( errorLocator );
+            errorIndexes = ChienSearch( errorLocator );
 
-            Console.Out.Write( errorLocator[0] );
+            Console.Out.Write( omega[0] );
         }
 
         private int[] BerklekampErrorLocator(int[] syndroms)
@@ -179,6 +182,68 @@ namespace ErrorCorrection
             }
 
             return dPoly;
+        }
+
+        private int[] CalcOmega(int[] syndroms, int[] lambda)
+        {
+            // O(x) is shorthand for Omega(x).
+            // L(x) is shorthand for Lambda(x).
+            // 
+            // O_i is the coefficient of the term in omega with degree i. Ditto for L_i.
+            // Eg, O(x) = 6x + 15;  O_0 = 15, O_1 = 6
+            // 
+            // From the paper:
+            // O_0 = S_b
+            //   ---> b in our implementation is 0.
+            // O_1 = S_{b+1} + S_b * L_1
+            //
+            // O_{v-1} = S_{b+v-1} + S_{b+v-2} * L_1 + ... + S_b * L_{v-1}.
+            // O_i = S_{b+i} + S_{b+ i-1} * L_1  + ... + S_{b+0} * L_i
+ 
+            // Lets say :
+            //   L(x) = 14x^2 + 14x + 1         aka {1, 14, 14}.
+            //   S(x) = 12x^3 + 4x^2 + 3x + 15  aka {15, 3, 4, 12}
+            //   b = 0;
+            //   v = 2 because the power of the highest monomial in L(x), 14x^2, is 2.
+            // 
+            // O_0 = S_{b} = S_0 = 15
+            // O_1 = S_{b+1} + S_b * L_1 = S_1 + S_0 * L_1 = 3 + 15 * 14 = 6.
+            // 
+            // O(x) = 6x + 15.
+
+            // Lets make up another example (these are completely made up so they may not work):
+            //   L(x) = 10x^3 + 9x^2 + 8x + 7       aka { 7, 8, 9, 10}
+            //   S(x) = 2^4 + 3x^3 + 4x^2 + 5x + 6  aka { 6, 5, 4, 3, 2}
+            //   b = 0 (design parameter)
+            //   v = 3
+
+            // O_i for i = 0 .. v - 1 = 2. Thus, O has form ax^2 + bx^1 + cx^0
+            // Compute O_0, O_1, O_2
+
+            // O_0 = S_{b+0}
+            //     = S_0
+            //
+            // O_1 = S_{b+1} + S_{b+0} * L_1
+            //     = S_1 + S_0 * L_1
+            //
+            // O_2 = S_{b+2} + S_{b+1} * L_1 + S_{b+0} * L_2
+            //     + S_2 + S_1 * L_1 + S_0 * L_2
+
+
+
+            int[] omega = new int[lambda.Length - 1];
+
+            for ( int i = 0; i < omega.Length; i++ )
+            {
+                omega[i] = syndroms[i];
+
+                for ( int lIter = 1; lIter <= i; lIter++ )
+                {
+                    omega[i] ^= gf.TableMult( syndroms[i - lIter], lambda[lIter] );
+                }
+            }
+
+            return omega;
         }
 
         private int[] ChienSearch( int[] lambda )

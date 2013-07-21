@@ -24,7 +24,7 @@ namespace ErrorCorrection
 
             Console.Out.WriteLine( result[0] );
 
-            //DecoderTest();
+            DecoderTest();
 
             /*
             GaloisField field = new GaloisField( 16, 0x13 );
