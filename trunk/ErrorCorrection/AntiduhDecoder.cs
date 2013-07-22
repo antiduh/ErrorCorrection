@@ -38,6 +38,7 @@ namespace ErrorCorrection
             int[] errorLocator;
             int[] omega;
             int[] errorIndexes;
+            int[] lp;
 
             for( int i = 0; i < syndroms.Length; i++ )
             {
@@ -45,14 +46,70 @@ namespace ErrorCorrection
             }
 
             errorLocator = BerklekampErrorLocator( syndroms );
+            lp = CalcLambdaPrime( errorLocator );
             omega = CalcOmega( syndroms, errorLocator );
 
             errorIndexes = ChienSearch( errorLocator );
 
-            Console.Out.Write( omega[0] );
+            RepairErrors( message, errorIndexes, omega, lp );
         }
 
-        private int[] BerklekampErrorLocator(int[] syndroms)
+        private void RepairErrors( int[] message, int[] errorIndexes, int[] omega, int[] lp )
+        {
+            int top;
+            int bottom;
+            int x;
+            int xInverse;
+
+
+            if( message.Length != errorIndexes.Length )
+            {
+                throw new Exception();
+            }
+
+            for( int i = 0; i < message.Length; i++ )
+            {
+                // If i = 2, then use a^2 in the evaluation.
+                // remember that field[i + 1] = a^i, since field[0] = 0 and field[1] = a^0.
+
+                // i = 2
+                // a^2 is the element. a^2 = 4
+                // 
+                // 13 = 4 * [6*(4^-1)^2 + 15] / 14
+
+                // 8 ^ 15 = 7
+                // 6 * a^-2 = 8
+                // 8 + 15 = 7
+
+
+                if( errorIndexes[i] == 0 )
+                {
+                    // This spot has an error.
+                    // Equation:
+                    //      value = X_J * [ Omega(1/X_J) / L'(1/X_J) ];
+                    // Break it down to:
+                    //      top = eval(omega, 1/X_J);
+                    //      top = X_J * top;
+                    //      bottom = eval( lambaPrime, 1/X_J );
+                    //      errorMagnitude = top / bottom;
+                    //     
+                    // To repair the message, we add the error magnitude to the received value.
+                    //      message[i] = message[i] ^ errorMagnitude
+
+                    x = gf.Field[i + 1];
+
+                    xInverse = gf.Divide( 1, x );
+
+                    top = gf.PolyEval( omega, xInverse );
+                    top = gf.TableMult( top, x );
+                    bottom = gf.PolyEval( lp, xInverse );
+                    
+                    message[i] ^= gf.Divide( top, bottom );
+                }
+            }
+        }
+
+        private int[] BerklekampErrorLocator( int[] syndroms )
         {
             // Explanation of terms:
             // S  = S(x)     - syndrom polynomial
@@ -184,7 +241,26 @@ namespace ErrorCorrection
             return dPoly;
         }
 
-        private int[] CalcOmega(int[] syndroms, int[] lambda)
+        private int[] CalcLambdaPrime( int[] lambda )
+        {
+            // Forney's says that we can just set even powers to 0 and then take the rest and 
+            // divide it by x (shift it down one). 
+            int[] lp = new int[lambda.Length - 1];
+
+            for( int i = 0; i < lp.Length; i++ )
+            {
+                lp[i] = lambda[i + 1];
+            }
+
+            for( int i = 1; i < lp.Length; i += 2 )
+            {
+                lp[i] = 0;
+            }
+
+            return lp;
+        }
+
+        private int[] CalcOmega( int[] syndroms, int[] lambda )
         {
             // O(x) is shorthand for Omega(x).
             // L(x) is shorthand for Lambda(x).

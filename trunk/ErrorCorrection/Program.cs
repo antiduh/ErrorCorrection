@@ -45,9 +45,31 @@ namespace ErrorCorrection
             AntiduhDecoder decoder = new AntiduhDecoder( 16, 11, 0x13 );
             //                                       V                      V
             // Note the following errors:    12, 12, 3, 3, 11, 10, 9, 8, 7, 6 , 5, 4, 3, 2, 1 
-            int[] errorMessage = new int[] { 12, 12, 1, 3, 11, 10, 9, 8, 7, 11, 5, 4, 3, 2, 1 };
+            //int[] errorMessage = new int[] { 12, 12, 1, 3, 11, 10, 9, 8, 7, 11, 5, 4, 3, 2, 1 };
+            int[] cleanMessage = new int[] { 12, 12, 3, 3, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
+            int[] errorMessage = new int[] { 12, 12, 3, 3, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
 
             decoder.Decode( errorMessage );
+
+            CheckArrayEquals( errorMessage, cleanMessage );
+
+            Console.Out.WriteLine( errorMessage[0] );
+        }
+
+        private static void CheckArrayEquals( int[] left, int[] right )
+        {
+            if( left.Length != right.Length )
+            {
+                throw new Exception();
+            }
+
+            for( int i = 0; i < left.Length; i++ )
+            {
+                if( left[i] != right[i] )
+                {
+                    throw new Exception();
+                }
+            }
         }
 
         private static void EncoderTest()
