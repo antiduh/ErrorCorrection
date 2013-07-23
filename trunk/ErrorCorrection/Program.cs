@@ -24,10 +24,10 @@ namespace ErrorCorrection
             ReedSolomonTest test = new ReedSolomonTest( 16, 11, 0x13, watch );
             //ReedSolomonTest test = new ReedSolomonTest( 256, 251, 0x011D, watch );
 
-            int hitsPerIter = 20;
-            int iters = 50*1000;
+            uint hitsPerIter = 20;
+            uint iters = 50*1000;
 
-            for( int i = 0; i < iters; i++ )
+            for( uint i = 0; i < iters; i++ )
             {
                 test.RoundTripTest();
                 test.RoundTripTest();
@@ -70,8 +70,8 @@ namespace ErrorCorrection
             AntiduhDecoder decoder = new AntiduhDecoder( 16, 11, 0x13 );
             //                                       V                      V
             // Note the following errors:    12, 12, 3, 3, 11, 10, 9, 8, 7, 6 , 5, 4, 3, 2, 1 
-            int[] errorMessage = new int[] { 12, 12, 1, 3, 11, 10, 9, 8, 7, 11, 5, 4, 3, 2, 1 };
-            int[] cleanMessage = new int[] { 12, 12, 3, 3, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
+            uint[] errorMessage = new uint[] { 12, 12, 1, 3, 11, 10, 9, 8, 7, 11, 5, 4, 3, 2, 1 };
+            uint[] cleanMessage = new uint[] { 12, 12, 3, 3, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
             //int[] cleanMessage = new int[] { 14, 11, 10, 8, 12, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
             //int[] errorMessage = new int[] { 14, 11, 10, 8, 12, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
 
@@ -82,7 +82,7 @@ namespace ErrorCorrection
             Console.Out.WriteLine( errorMessage[0] );
         }
 
-        private static void CheckArrayEquals( int[] left, int[] right )
+        private static void CheckArrayEquals( uint[] left, uint[] right )
         {
             if( left.Length != right.Length )
             {
@@ -104,7 +104,7 @@ namespace ErrorCorrection
             // GF(2^4), with field generator poly p(x) = x^4 + x + 1 --> 10011 == 19 == 0x13
             // size = 16, n = 15, k = 11, 2t = 4
             AntiduhEncoder encoder = new AntiduhEncoder( 16, 11, 0x13 );
-            int[] message = new int[] { 0, 0, 0, 0, 12, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
+            uint[] message = new uint[] { 0, 0, 0, 0, 12, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
 
             // GF(2^8) with field generatory poly p(x) = x^8 + x^4 + x^3 + x^2 + 1 ---> 100011101 == 285 == 0x011D
             // n = 255, k = 239, 2t = 16
@@ -116,28 +116,13 @@ namespace ErrorCorrection
 
         }
 
-        private static void ArrayPrint( int[] array )
+        private static void ArrayPrint( uint[] array )
         {
-            for ( int i = 0; i < array.Length; i++ )
+            for ( uint i = 0; i < array.Length; i++ )
             {
                 Console.Out.Write( array[i] + ", " );
             }
             Console.Out.WriteLine();
-        }
-
-        private static void MultTestCase()
-        {
-            int[] left = new int[] { 1, 2 };
-            int[] right = new int[] { 3, 4 };
-            int[] result;
-    
-            GaloisField field = new GaloisField( 16, 0x13 );
-            //GaloisField field = new GaloisField( 256, 0x011D );
-
-            result = field.PolyMult( left, right );
-
-            Console.Out.WriteLine( field.Multiply( 3, 7 ) ); 
-
         }
 
         public static void PrintList( List<int> list )
@@ -152,25 +137,25 @@ namespace ErrorCorrection
 
     public class ReedSolomonTest
     {
-        int size;
-        int checkBytes;
-        int maxCorruption;
-        int[] message;
-        int[] cleanMessage;
+        uint size;
+        uint checkBytes;
+        uint maxCorruption;
+        uint[] message;
+        uint[] cleanMessage;
         AntiduhEncoder encoder;
         AntiduhDecoder decoder;
         Random rand;
         Stopwatch watch;
 
-        public ReedSolomonTest( int size, int dataBytes, int poly, Stopwatch watch )
+        public ReedSolomonTest( uint size, uint dataBytes, uint poly, Stopwatch watch )
         {
             this.size = size;
             this.watch = watch;
 
-            checkBytes = size - 1 - dataBytes;
+            checkBytes = (uint)(size - 1 - dataBytes);
             maxCorruption = checkBytes / 2;
-            message = new int[size - 1];
-            cleanMessage = new int[size - 1];
+            message = new uint[size - 1];
+            cleanMessage = new uint[size - 1];
 
             rand = new Random();
             encoder = new AntiduhEncoder( size, dataBytes, poly );
@@ -184,7 +169,7 @@ namespace ErrorCorrection
             {
                 // message[i] must be elements of the field. If size = 16, field elements are 0 .. 15.
                 // rand.Next(0, 16) returns elements between 0 .. 15
-                message[i] = (byte)rand.Next( 0, size );
+                message[i] = (byte)rand.Next( 0, (int)size );
             }
 
             // ---- Encode the message ----
@@ -199,7 +184,7 @@ namespace ErrorCorrection
             for( int i = 0; i < maxCorruption; i++ )
             {
                 corruptPosition = rand.Next( 0, message.Length );
-                message[corruptPosition] = (byte)rand.Next( 0, size );
+                message[corruptPosition] = (byte)rand.Next( 0, (int)size );
             }
 
             // ---- Repair the message ----
@@ -212,7 +197,7 @@ namespace ErrorCorrection
         }
 
 
-        private static void CheckArrayEquals( int[] left, int[] right )
+        private static void CheckArrayEquals( uint[] left, uint[] right )
         {
             if( left.Length != right.Length )
             {

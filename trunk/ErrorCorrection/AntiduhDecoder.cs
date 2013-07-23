@@ -17,24 +17,24 @@ namespace ErrorCorrection
     public sealed class AntiduhDecoder
     {
         private readonly GaloisField gf;
-        private readonly int size;
-        private readonly int fieldGenPoly;
-        private readonly int numDataSymbols;
-        private readonly int numCheckBytes;
+        private readonly uint size;
+        private readonly uint fieldGenPoly;
+        private readonly uint numDataSymbols;
+        private readonly uint numCheckBytes;
 
-        private int[] syndroms;
+        private uint[] syndroms;
         
-        private int[] lambda;
-        private int[] corrPoly;
-        private int[] lambdaStar;
+        private uint[] lambda;
+        private uint[] corrPoly;
+        private uint[] lambdaStar;
 
-        private int[] lambdaPrime;
+        private uint[] lambdaPrime;
         
-        private int[] omega;
+        private uint[] omega;
         
-        private int[] errorIndexes;
+        private uint[] errorIndexes;
 
-        public AntiduhDecoder( int size, int numDataSymbols, int fieldGenPoly )
+        public AntiduhDecoder( uint size, uint numDataSymbols, uint fieldGenPoly )
         {
             this.size = size;
             this.numDataSymbols = numDataSymbols;
@@ -42,26 +42,26 @@ namespace ErrorCorrection
             this.numCheckBytes = (size - 1) - numDataSymbols;
 
             // Syndrom calculation buffers
-            this.syndroms = new int[numCheckBytes];
+            this.syndroms = new uint[numCheckBytes];
 
             // Lamda calculation buffers
-            this.lambda = new int[numCheckBytes - 1];
-            this.corrPoly = new int[numCheckBytes - 1];
-            this.lambdaStar = new int[numCheckBytes - 1];
+            this.lambda = new uint[numCheckBytes - 1];
+            this.corrPoly = new uint[numCheckBytes - 1];
+            this.lambdaStar = new uint[numCheckBytes - 1];
 
             // LambdaPrime calculation buffers
-            this.lambdaPrime = new int[numCheckBytes - 2];
+            this.lambdaPrime = new uint[numCheckBytes - 2];
 
             // Omega calculation buffers
-            this.omega = new int[numCheckBytes - 2];
+            this.omega = new uint[numCheckBytes - 2];
             
             // Error position calculation
-            this.errorIndexes = new int[size - 1];
+            this.errorIndexes = new uint[size - 1];
 
             this.gf = new GaloisField( size, fieldGenPoly );
         }
 
-        public void Decode( int[] message )
+        public void Decode( uint[] message )
         {
             CalcSyndromPoly( message );
             CalcLambda();
@@ -73,12 +73,12 @@ namespace ErrorCorrection
             RepairErrors( message, errorIndexes, omega, lambdaPrime );
         }
         
-        private void RepairErrors( int[] message, int[] errorIndexes, int[] omega, int[] lp )
+        private void RepairErrors( uint[] message, uint[] errorIndexes, uint[] omega, uint[] lp )
         {
-            int top;
-            int bottom;
-            int x;
-            int xInverse;
+            uint top;
+            uint bottom;
+            uint x;
+            uint xInverse;
 
 
             if( message.Length != errorIndexes.Length )
@@ -86,7 +86,7 @@ namespace ErrorCorrection
                 throw new Exception();
             }
 
-            for( int i = 0; i < message.Length; i++ )
+            for( uint i = 0; i < message.Length; i++ )
             {
                 // If i = 2, then use a^2 in the evaluation.
                 // remember that field[i + 1] = a^i, since field[0] = 0 and field[1] = a^0.
@@ -184,10 +184,10 @@ namespace ErrorCorrection
             //   If K <= 2T goto 1
             //   Else, D(x) is the error locator polynomial.
 
-            int k;
-            int l;
-            int e;
-            int eInv; // temp to store calculation of 1 / e aka e^(-1)
+            uint k;
+            uint l;
+            uint e;
+            uint eInv; // temp to store calculation of 1 / e aka e^(-1)
 
             // --- Initial conditions ----
             // Need to clear lambda and corrPoly, but not lambdaStar. lambda and corrPoly 
@@ -320,11 +320,11 @@ namespace ErrorCorrection
 
             // Don't need to zero this.omega first - it's assigned to before we use it.
 
-            for ( int i = 0; i < omega.Length; i++ )
+            for ( uint i = 0; i < omega.Length; i++ )
             {
                 omega[i] = syndroms[i];
 
-                for ( int lIter = 1; lIter <= i; lIter++ )
+                for ( uint lIter = 1; lIter <= i; lIter++ )
                 {
                     omega[i] ^= gf.Multiply( syndroms[i - lIter], lambda[lIter] );
                 }
@@ -338,7 +338,7 @@ namespace ErrorCorrection
 
             // Don't need to zero this.errorIndexes first - it's not used before its assigned to.
 
-            for( int i = 0; i < errorIndexes.Length; i++ )
+            for( uint i = 0; i < errorIndexes.Length; i++ )
             {
                 errorIndexes[i] = gf.PolyEval(
                     lambda,
@@ -347,14 +347,14 @@ namespace ErrorCorrection
             }
         }
 
-        private void CalcSyndromPoly( int[] message )
+        private void CalcSyndromPoly( uint[] message )
         {
-            int syndrome;
-            int root;
+            uint syndrome;
+            uint root;
 
             // Don't need to zero this.syndromes first - it's not used before its assigned to.
 
-            for( int synIndex = 0; synIndex < syndroms.Length; synIndex++ )
+            for( uint synIndex = 0; synIndex < syndroms.Length; synIndex++ )
             {
                 // EG, if g(x) = (x+a^0)(x+a^1)(x+a^2)(x+a^3) 
                 //             = (x+1)(x+2)(x+4)(x+8),

@@ -19,11 +19,11 @@ namespace ErrorCorrection
     /// </remarks>
     public sealed class AntiduhEncoder
     {
-        private readonly int size;
+        private readonly uint size;
 
-        private readonly int numDataSymbols;
+        private readonly uint numDataSymbols;
 
-        private readonly int checkBytes;
+        private readonly uint checkBytes;
 
         /// <summary>
         /// Stores the code generator polynomial.
@@ -32,17 +32,17 @@ namespace ErrorCorrection
         /// The highest-degree monomial in the code generator polynomial is not used
         /// during the encoding process.
         /// </remarks>
-        private readonly int[] codeGenPoly;
+        private readonly uint[] codeGenPoly;
 
         /// <summary>
         /// Buffer used to store the accumulating result during the encoding/modulus 
         /// operation.
         /// </summary>
-        private int[] modulusResult;
+        private readonly uint[] modulusResult;
 
         private readonly GaloisField gf;
 
-        public AntiduhEncoder( int size, int numDataSymbols, int fieldGenPoly )
+        public AntiduhEncoder( uint size, uint numDataSymbols, uint fieldGenPoly )
         {
             this.size = size;
             this.numDataSymbols = numDataSymbols;
@@ -58,7 +58,7 @@ namespace ErrorCorrection
 
             codeGenPoly = BuildCodeGenPoly();
 
-            this.modulusResult = new int[checkBytes];
+            this.modulusResult = new uint[checkBytes];
         }
 
         /// <summary>
@@ -76,7 +76,7 @@ namespace ErrorCorrection
         /// The encoding process ignores the highest-degree monomial in the code generation 
         /// polynomial. The extra term is still produced and stored, however it is not used.
         /// </remarks>
-        private int[] BuildCodeGenPoly()
+        private uint[] BuildCodeGenPoly()
         {
             // Example:
             //   - GF(2^4) with p(x) = x^4 + x + 1.
@@ -107,9 +107,9 @@ namespace ErrorCorrection
             // This is a polynomial of degree 4, but has 5 monomials.
 
 
-            int numElements = size - numDataSymbols - 1;
+            uint numElements = size - numDataSymbols - 1;
 
-            List<int[]> polys = new List<int[]>( numElements );
+            List<uint[]> polys = new List<uint[]>( (int)numElements );
 
             // Build the degree-1 polynomials (we need 2t = numElements of them).
             // Eg 2t = 4, need four of them:
@@ -119,16 +119,16 @@ namespace ErrorCorrection
             //   (x + 8) is {8, 1}
 
             // Remember that field[0] is 0, field[1] is a^0.
-            for( int i = 0; i < numElements; i++ )
+            for( uint i = 0; i < numElements; i++ )
             {
-                polys.Add( new int[] { gf.Field[i + 1], 1 } );
+                polys.Add( new uint[] { gf.Field[i + 1], 1 } );
             }
 
             // Multiply them one at a time to produce the field generator poly.
-            int[] current = polys[0];
-            for( int i = 1; i < numElements; i++ )
+            uint[] current = polys[0];
+            for( uint i = 1; i < numElements; i++ )
             {
-                current = gf.PolyMult( current, polys[i] );
+                current = gf.PolyMult( current, polys[(int)i] );
             }
 
             return current;
@@ -149,7 +149,7 @@ namespace ErrorCorrection
         /// then the modulus returns those zero bytes. This is by definition and is part of the design of 
         /// RS error correction.
         /// </remarks>
-        public void Encode( int[] message )
+        public void Encode( uint[] message )
         {
             // Lets assume:
             //   GF(2^4)
@@ -224,15 +224,15 @@ namespace ErrorCorrection
             // Z and Y are small temporary buffers used during this process, and so we allocate 
             // them when the class is constructed so that they can be re-used.
 
-            int z_0;
-            int r;
-            int[] z = this.modulusResult;
-            int[] g = this.codeGenPoly;
+            uint z_0;
+            uint r;
+            uint[] z = this.modulusResult;
+            uint[] g = this.codeGenPoly;
             
             // ------------ Init ----------
 
             // Clear the bytes that are supposed to be zero in the message.
-            Array.Clear( message, 0, checkBytes );
+            Array.Clear( message, 0, (int)checkBytes );
 
             // Step 0.1 -- Z = {0,0,0,0};
             Array.Clear( z, 0, z.Length );
@@ -244,14 +244,14 @@ namespace ErrorCorrection
             // Note, we don't run the loop on the last message byte.
             // Thats because after we process the last message byte, we don't do the z fudge crap.
             // So we do that manually after the loop, instead of putting a conditional in the loop.
-            for( int i = message.Length - 1; i > checkBytes; i-- )
+            for( uint i = (uint)(message.Length - 1); i > checkBytes; i-- )
             {
                 // Step 1 -- r = z_0 - x^i
                 r = z_0 ^ message[i];
 
                 // Step 2 -- Y = g'(x) * r
                 // Step 3 -- Z = Z - Y
-                for( int zIter = 0; zIter < z.Length; zIter++ )
+                for( uint zIter = 0; zIter < z.Length; zIter++ )
                 {
                     z[zIter] ^= gf.Multiply( g[zIter], r );
                 }
@@ -261,7 +261,7 @@ namespace ErrorCorrection
                 z_0 = z[z.Length - 1];
 
                 // Shift Z.
-                for( int zIter = z.Length - 1; zIter >= 1; zIter-- )
+                for( uint zIter = (uint)(z.Length - 1); zIter >= 1; zIter-- )
                 {
                     z[zIter] = z[zIter - 1];
                 }
@@ -276,14 +276,14 @@ namespace ErrorCorrection
 
             // Step 2 -- Y = g'(x) * r
             // Step 3 -- Z = Z - Y
-            for( int zIter = 0; zIter < z.Length; zIter++ )
+            for( uint zIter = 0; zIter < z.Length; zIter++ )
             {
                 z[zIter] ^= gf.Multiply( g[zIter], r );
             }
 
 
             // Write z to the zero-bytes in the message.
-            for( int i = 0; i < z.Length; i++ )
+            for( uint i = 0; i < z.Length; i++ )
             {
                 message[i] = z[i];
             }
