@@ -15,14 +15,7 @@ namespace ErrorCorrection
         [STAThread]
         static void Main()
         {
-            int[] syndroms = new int[] { 15, 3, 4, 12 };
-            int[] omega = new int[] { 14, 3 };
-            int[] lambda = new int[] { 9, 7, 7};
-            GaloisField field = new GaloisField( 16, 0x13 );
-
-            int[] result = field.PolyMult( lambda, omega );
-
-            Console.Out.WriteLine( result[0] );
+            EncoderTest();
 
             DecoderTest();
 
@@ -46,8 +39,9 @@ namespace ErrorCorrection
             //                                       V                      V
             // Note the following errors:    12, 12, 3, 3, 11, 10, 9, 8, 7, 6 , 5, 4, 3, 2, 1 
             //int[] errorMessage = new int[] { 12, 12, 1, 3, 11, 10, 9, 8, 7, 11, 5, 4, 3, 2, 1 };
-            int[] cleanMessage = new int[] { 12, 12, 3, 3, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
-            int[] errorMessage = new int[] { 12, 12, 3, 3, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
+            //int[] cleanMessage = new int[] { 12, 12, 3, 3, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
+            int[] cleanMessage = new int[] { 14, 11, 10, 8, 12, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
+            int[] errorMessage = new int[] { 14, 11, 10, 8, 12, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
 
             decoder.Decode( errorMessage );
 
@@ -74,56 +68,29 @@ namespace ErrorCorrection
 
         private static void EncoderTest()
         {
-            Stopwatch watch = new Stopwatch();
-            Thread.Sleep( 250 );
-            Thread.SpinWait( 1000 );
-
-            // Logarithm mult:
-            // -- Debugger: 720
-            // -- Native:   228
-
-            // Table mult:
-            // -- Debugger: 569
-            // -- Native:   147
 
             // GF(2^4), with field generator poly p(x) = x^4 + x + 1 --> 10011 == 19 == 0x13
             // size = 16, n = 15, k = 11, 2t = 4
             AntiduhEncoder encoder = new AntiduhEncoder( 16, 11, 0x13 );
-            int[] message = new int[] { 0, 0, 0, 0, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
+            int[] message = new int[] { 0, 0, 0, 0, 12, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
 
             // GF(2^8) with field generatory poly p(x) = x^8 + x^4 + x^3 + x^2 + 1 ---> 100011101 == 285 == 0x011D
             // n = 255, k = 239, 2t = 16
             //AntiduhEncoder encoder = new AntiduhEncoder( 256, 239, 0x011D );
 
-
-            //GaloisField field = new GaloisField( 16, 0x13 );
-
-            watch.Start();
-
-            for( int i = 0; i < 50000; i++ )
-            {
-                encoder.Encode( message );
-                encoder.Encode( message );
-                encoder.Encode( message );
-                encoder.Encode( message );
-                encoder.Encode( message );
-
-                encoder.Encode( message );
-                encoder.Encode( message );
-                encoder.Encode( message );
-                encoder.Encode( message );
-                encoder.Encode( message );
-            }
-
-
-            watch.Stop();
-
+            encoder.Encode( message );
+            ArrayPrint( message );
             Console.Out.WriteLine( GaloisField.PolyPrint( message ) );
 
-            Console.Out.WriteLine( "Elapsed: " + watch.ElapsedMilliseconds );
+        }
 
-            MessageBox.Show( "Elapsed: " + watch.ElapsedMilliseconds );
-            
+        private static void ArrayPrint( int[] array )
+        {
+            for ( int i = 0; i < array.Length; i++ )
+            {
+                Console.Out.Write( array[i] + ", " );
+            }
+            Console.Out.WriteLine();
         }
 
         private static void MultTestCase()
