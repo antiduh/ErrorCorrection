@@ -22,6 +22,18 @@ namespace ErrorCorrection
         private readonly int numDataSymbols;
         private readonly int numCheckBytes;
 
+        private int[] syndroms;
+        
+        private int[] lambda;
+        private int[] corrPoly;
+        private int[] lambdaStar;
+
+        private int[] lambdaPrime;
+        
+        private int[] omega;
+        
+        private int[] errorIndexes;
+
         public AntiduhDecoder( int size, int numDataSymbols, int fieldGenPoly )
         {
             this.size = size;
@@ -29,31 +41,38 @@ namespace ErrorCorrection
             this.fieldGenPoly = fieldGenPoly;
             this.numCheckBytes = (size - 1) - numDataSymbols;
 
+            // Syndrom calculation buffers
+            this.syndroms = new int[numCheckBytes];
+
+            // Lamda calculation buffers
+            this.lambda = new int[numCheckBytes - 1];
+            this.corrPoly = new int[numCheckBytes - 1];
+            this.lambdaStar = new int[numCheckBytes - 1];
+
+            // LambdaPrime calculation buffers
+            this.lambdaPrime = new int[numCheckBytes - 2];
+
+            // Omega calculation buffers
+            this.omega = new int[numCheckBytes - 2];
+            
+            // Error position calculation
+            this.errorIndexes = new int[size - 1];
+
             this.gf = new GaloisField( size, fieldGenPoly );
         }
 
         public void Decode( int[] message )
         {
-            int[] syndroms = new int[numCheckBytes];
-            int[] errorLocator;
-            int[] omega;
-            int[] errorIndexes;
-            int[] lp;
+            CalcSyndromPoly( message );
+            CalcLambda();
+            CalcLambdaPrime();
+            CalcOmega();
 
-            for( int i = 0; i < syndroms.Length; i++ )
-            {
-                syndroms[i] = CalcSyndrom( message, gf.Field[i + 1] );
-            }
+            ChienSearch();
 
-            errorLocator = BerklekampErrorLocator( syndroms );
-            lp = CalcLambdaPrime( errorLocator );
-            omega = CalcOmega( syndroms, errorLocator );
-
-            errorIndexes = ChienSearch( errorLocator );
-
-            RepairErrors( message, errorIndexes, omega, lp );
+            RepairErrors( message, errorIndexes, omega, lambdaPrime );
         }
-
+        
         private void RepairErrors( int[] message, int[] errorIndexes, int[] omega, int[] lp )
         {
             int top;
@@ -109,7 +128,7 @@ namespace ErrorCorrection
             }
         }
 
-        private int[] BerklekampErrorLocator( int[] syndroms )
+        private void CalcLambda()
         {
             // Explanation of terms:
             // S  = S(x)     - syndrom polynomial
@@ -165,25 +184,20 @@ namespace ErrorCorrection
             //   If K <= 2T goto 1
             //   Else, D(x) is the error locator polynomial.
 
-            // the C(x) polynomial.
-            int[] corr = new int[numCheckBytes - 1];
-            
-            // The lamda(x) aka D(x) polynomial
-            int[] dPoly = new int[numCheckBytes - 1];
-
-            // The lambda-star(x) aka D*(x) polynomial.
-            int[] dStarPoly = new int[numCheckBytes - 1];
-
             int k;
             int l;
             int e;
             int eInv; // temp to store calculation of 1 / e aka e^(-1)
 
             // --- Initial conditions ----
+            // Need to clear lambda(x) and C(x), but not lambdaStar(x). L*(x) is directly assigned 
+            // in the algorithm.
+            Array.Clear( corrPoly, 0, corrPoly.Length );
+            Array.Clear( lambda, 0, lambda.Length );
             k = 1;
             l = 0;
-            corr[1] = 1;
-            dPoly[0] = 1;
+            corrPoly[1] = 1;
+            lambda[0] = 1;
 
 
             while( k <= numCheckBytes )
@@ -193,16 +207,16 @@ namespace ErrorCorrection
 
                 for( int i = 1; i <= l; i++ )
                 {
-                    e ^= gf.TableMult( dPoly[i], syndroms[k - 1 - i]);
+                    e ^= gf.TableMult( lambda[i], syndroms[k - 1 - i] );
                 }
 
                 // --- Update estimate if e != 0 ---
                 if( e != 0 )
                 {
                     // D*(x) = D(x) + e * C(x);
-                    for( int i = 0; i < dStarPoly.Length; i++ )
+                    for( int i = 0; i < lambdaStar.Length; i++ )
                     {
-                        dStarPoly[i] = dPoly[i] ^ gf.TableMult( e, corr[i] );
+                        lambdaStar[i] = lambda[i] ^ gf.TableMult( e, corrPoly[i] );
                     }
 
                     if( 2 * l < k )
@@ -212,9 +226,9 @@ namespace ErrorCorrection
 
                         // C(x) = D(x) * e^(-1);
                         eInv = gf.Inverses[e];
-                        for( int i = 0; i < corr.Length; i++ )
+                        for( int i = 0; i < corrPoly.Length; i++ )
                         {
-                            corr[i] = gf.TableMult( dPoly[i], eInv );
+                            corrPoly[i] = gf.TableMult( lambda[i], eInv );
                         }
                     }
                 }
@@ -222,45 +236,42 @@ namespace ErrorCorrection
                 // --- Advance C(x) ---
 
                 // C(x) = C(x) * x
-                for( int i = corr.Length - 1; i >= 1; i-- )
+                for( int i = corrPoly.Length - 1; i >= 1; i-- )
                 {
-                    corr[i] = corr[i - 1];
+                    corrPoly[i] = corrPoly[i - 1];
                 }
-                corr[0] = 0;
+                corrPoly[0] = 0;
 
                 if( e != 0 )
                 {
                     // D(x) = D*(x);
-                    Array.Copy( dStarPoly, dPoly, dPoly.Length );
+                    Array.Copy( lambdaStar, lambda, lambda.Length );
                 }
 
                 k += 1;
 
             }
-
-            return dPoly;
         }
 
-        private int[] CalcLambdaPrime( int[] lambda )
+        private void CalcLambdaPrime()
         {
             // Forney's says that we can just set even powers to 0 and then take the rest and 
             // divide it by x (shift it down one). 
-            int[] lp = new int[lambda.Length - 1];
+            
+            // No need to clear between calls; full assignment is done every call.
 
-            for( int i = 0; i < lp.Length; i++ )
+            for( int i = 0; i < lambdaPrime.Length; i++ )
             {
-                lp[i] = lambda[i + 1];
+                lambdaPrime[i] = lambda[i + 1];
             }
 
-            for( int i = 1; i < lp.Length; i += 2 )
+            for( int i = 1; i < lambdaPrime.Length; i += 2 )
             {
-                lp[i] = 0;
+                lambdaPrime[i] = 0;
             }
-
-            return lp;
         }
 
-        private int[] CalcOmega( int[] syndroms, int[] lambda )
+        private void CalcOmega()
         {
             // O(x) is shorthand for Omega(x).
             // L(x) is shorthand for Lambda(x).
@@ -305,10 +316,6 @@ namespace ErrorCorrection
             // O_2 = S_{b+2} + S_{b+1} * L_1 + S_{b+0} * L_2
             //     + S_2 + S_1 * L_1 + S_0 * L_2
 
-
-
-            int[] omega = new int[lambda.Length - 1];
-
             for ( int i = 0; i < omega.Length; i++ )
             {
                 omega[i] = syndroms[i];
@@ -318,73 +325,53 @@ namespace ErrorCorrection
                     omega[i] ^= gf.TableMult( syndroms[i - lIter], lambda[lIter] );
                 }
             }
-
-            return omega;
         }
 
-        private int[] ChienSearch( int[] lambda )
+        private void ChienSearch( )
         {
-            int[] eLocs = new int[size - 1];
-
             // The chien search evaluates the lamba polynomial for the multiplicate inverse 
             // each element in the field other than 0.
             // Eg,
             // eLocs[i] = gf.EvalPoly(lambda, gf.Divide( 1, gf.Field[i] );
             //
-            // This method does a significant amount of converting back-and-fourth between
-            // representation of terms, and so instead, we evalute one term in the polynomial,
-            // add it to the right spot in errorPositions, evaluate the next term, etc.
-            //
-            // eg, say that lamba was D(x) = 14x^2 + 14x + 1.
-            // 
 
-            for( int i = 0; i < eLocs.Length; i++ )
+            for( int i = 0; i < errorIndexes.Length; i++ )
             {
-                eLocs[i] = gf.PolyEval(
+                errorIndexes[i] = gf.PolyEval(
                     lambda,
                     gf.Inverses[ gf.Field[i + 1] ]
                 );
             }
-
-            /*
-            // Evaluate the constant term in the polynomial.
-            for( int i = 0; i < eLocs.Length; i++ )
-            {
-                eLocs[i] = lambda[0];
-            }
-
-            // Evaluate each non-constant term.
-            int lambdaLog;
-
-            for( int lambdaIndex = 1; lambdaIndex < lambda.Length; lambdaIndex++ )
-            {
-                // Evaluate the nth monomial in lambda.
-                // First, look up with logarithm the current lambda corresponds to.
-                // If lambda[i] = 14, then 14 is a^11. so lambdaLog is 11.
-                lambdaLog = gf.Logarithms[lambda[lambdaIndex]];
-            }
-            */
-
-
-            return eLocs;
         }
 
-        // EG, if g(x) = (x+a^0)(x+a^1)(x+a^2)(x+a^3) 
-        //             = (x+1)(x+2)(x+4)(x+8),
-        // Then for the first syndrom S_0, we would provide root = a^0 = 1.
-        // S_1 --> root = a^1 = 2 etc.
-        private int CalcSyndrom( int[] message, int root )
+        private void CalcSyndromPoly( int[] message )
         {
-            int syndrom = 0;
+            int syndrome;
+            int root;
 
-            for( int i = message.Length - 1; i > 0; i-- )
+            // syndroms is a class variable. We need to think about whether
+            // it has to be zeroed between calls; the answer is no because we 
+            // reassign every value outright every call.
+
+            for( int synIndex = 0; synIndex < syndroms.Length; synIndex++ )
             {
-                syndrom = gf.TableMult( ( syndrom ^ message[i] ), root );
+                // EG, if g(x) = (x+a^0)(x+a^1)(x+a^2)(x+a^3) 
+                //             = (x+1)(x+2)(x+4)(x+8),
+                // Then for the first syndrom S_0, we would provide root = a^0 = 1.
+                // S_1 --> root = a^1 = 2 etc.
+
+                root = gf.Field[synIndex + 1];
+                syndrome = 0;
+
+                for( int i = message.Length - 1; i > 0; i-- )
+                {
+                    syndrome = gf.TableMult( ( syndrome ^ message[i] ), root );
+                }
+
+                syndroms[synIndex] = syndrome ^ message[0];
             }
-
-            syndrom ^= message[0];
-
-            return syndrom;
         }
+
+
     }
 }

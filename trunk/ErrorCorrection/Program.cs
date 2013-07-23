@@ -22,14 +22,26 @@ namespace ErrorCorrection
         private static void PerformanceTest()
         {
             Stopwatch watch = new Stopwatch();
-            ReedSolomonTest test = new ReedSolomonTest( 16, 11, 0x13, watch );
-            //ReedSolomonTest test = new ReedSolomonTest( 256, 239, 0x011D );
+            //ReedSolomonTest test = new ReedSolomonTest( 16, 11, 0x13, watch );
+            ReedSolomonTest test = new ReedSolomonTest( 256, 239, 0x011D, watch );
 
-            int hitsPerIter = 10;
-            int iters = 100 * 1000;
+            int hitsPerIter = 20;
+            int iters = 10 * 1000;
 
             for( int i = 0; i < iters; i++ )
             {
+                test.RoundTripTest();
+                test.RoundTripTest();
+                test.RoundTripTest();
+                test.RoundTripTest();
+                test.RoundTripTest();
+
+                test.RoundTripTest();
+                test.RoundTripTest();
+                test.RoundTripTest();
+                test.RoundTripTest();
+                test.RoundTripTest();
+
                 test.RoundTripTest();
                 test.RoundTripTest();
                 test.RoundTripTest();

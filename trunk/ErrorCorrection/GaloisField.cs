@@ -121,7 +121,7 @@ namespace ErrorCorrection
             {
                 for( int right = 0; right < size; right++ )
                 {
-                    this.multTable[left, right] = Mult( left, right );
+                    this.multTable[left, right] = InternalMult( left, right );
                 }
             }
         }
@@ -136,16 +136,24 @@ namespace ErrorCorrection
             this.Inverses[0] = 0;
             for( int i = 1; i < this.Inverses.Length; i++ )
             {
-                this.Inverses[this.Field[i]] = Divide( 1, this.Field[i] );
+                this.Inverses[this.Field[i]] = InternalDivide( 1, this.Field[i] );
             }
         }
 
         public int TableMult( int left, int right )
         {
+            // Using the multiplication table is a lot faster than the original computation.
             return this.multTable[left, right];
         }
 
-        private int Mult( int left, int right )
+        public int Divide( int dividend, int divisor )
+        {
+            // Using the original computation is the same speed as the multiplication table.
+            // I don't know why.
+            return multTable[dividend, Inverses[divisor]];
+        }
+
+        private int InternalMult( int left, int right )
         {
             // Conceptual notes:
             // If 
@@ -175,7 +183,7 @@ namespace ErrorCorrection
             //  a^k = field[k+1];
             // 
             // Return a^k.
-            
+
             // Handle the special case 0
             if( left == 0 || right == 0 ) { return 0; }
 
@@ -184,19 +192,17 @@ namespace ErrorCorrection
             right = Logarithms[right];
 
             // Sum the logarithms, using left to store the result.
-            left = (left + right) % (size - 1);
+            left = ( left + right ) % ( size - 1 );
 
             // Convert the logarithm back to the field value.
             return this.Field[left + 1];
         }
 
-        public int Divide( int dividend, int divisor )
+        private int InternalDivide( int dividend, int divisor )
         {
             // Same general concept as Mult. Convert to logarithms and subtract.
 
             if( dividend == 0 ) { return 0; }
-
-            if( divisor == 0 ) { throw new ArgumentException(); }
 
             dividend = Logarithms[dividend];
 
@@ -279,7 +285,7 @@ namespace ErrorCorrection
             {
                 for( int j = 0; j < right.Length; j++ )
                 {
-                    coeff = Mult( left[i], right[j] );
+                    coeff = InternalMult( left[i], right[j] );
 
                     result[i + j] = result[i + j] ^ coeff;
                 }
