@@ -14,7 +14,7 @@ namespace ErrorCorrection
     /// <summary>
     /// TODO: Update summary.
     /// </summary>
-    public class AntiduhDecoder
+    public sealed class AntiduhDecoder
     {
         private readonly GaloisField gf;
         private readonly int size;
@@ -120,7 +120,7 @@ namespace ErrorCorrection
                     xInverse = gf.Inverses[x];
 
                     top = gf.PolyEval( omega, xInverse );
-                    top = gf.TableMult( top, x );
+                    top = gf.Multiply( top, x );
                     bottom = gf.PolyEval( lp, xInverse );
                     
                     message[i] ^= gf.Divide( top, bottom );
@@ -190,8 +190,8 @@ namespace ErrorCorrection
             int eInv; // temp to store calculation of 1 / e aka e^(-1)
 
             // --- Initial conditions ----
-            // Need to clear lambda(x) and C(x), but not lambdaStar(x). L*(x) is directly assigned 
-            // in the algorithm.
+            // Need to clear lambda and corrPoly, but not lambdaStar. lambda and corrPoly 
+            // are used and initialized iteratively in the algorithm, whereas lambdaStar isn't.
             Array.Clear( corrPoly, 0, corrPoly.Length );
             Array.Clear( lambda, 0, lambda.Length );
             k = 1;
@@ -207,7 +207,7 @@ namespace ErrorCorrection
 
                 for( int i = 1; i <= l; i++ )
                 {
-                    e ^= gf.TableMult( lambda[i], syndroms[k - 1 - i] );
+                    e ^= gf.Multiply( lambda[i], syndroms[k - 1 - i] );
                 }
 
                 // --- Update estimate if e != 0 ---
@@ -216,7 +216,7 @@ namespace ErrorCorrection
                     // D*(x) = D(x) + e * C(x);
                     for( int i = 0; i < lambdaStar.Length; i++ )
                     {
-                        lambdaStar[i] = lambda[i] ^ gf.TableMult( e, corrPoly[i] );
+                        lambdaStar[i] = lambda[i] ^ gf.Multiply( e, corrPoly[i] );
                     }
 
                     if( 2 * l < k )
@@ -228,7 +228,7 @@ namespace ErrorCorrection
                         eInv = gf.Inverses[e];
                         for( int i = 0; i < corrPoly.Length; i++ )
                         {
-                            corrPoly[i] = gf.TableMult( lambda[i], eInv );
+                            corrPoly[i] = gf.Multiply( lambda[i], eInv );
                         }
                     }
                 }
@@ -258,16 +258,18 @@ namespace ErrorCorrection
             // Forney's says that we can just set even powers to 0 and then take the rest and 
             // divide it by x (shift it down one). 
             
-            // No need to clear between calls; full assignment is done every call.
+            // No need to clear this.lambdaPrime between calls; full assignment is done every call.
 
             for( int i = 0; i < lambdaPrime.Length; i++ )
             {
-                lambdaPrime[i] = lambda[i + 1];
-            }
-
-            for( int i = 1; i < lambdaPrime.Length; i += 2 )
-            {
-                lambdaPrime[i] = 0;
+                if( ( i & 0x1 ) == 0 )
+                {
+                    lambdaPrime[i] = lambda[i + 1];
+                }
+                else
+                {
+                    lambdaPrime[i] = 0;
+                }
             }
         }
 
@@ -316,24 +318,25 @@ namespace ErrorCorrection
             // O_2 = S_{b+2} + S_{b+1} * L_1 + S_{b+0} * L_2
             //     + S_2 + S_1 * L_1 + S_0 * L_2
 
+            // Don't need to zero this.omega first - it's assigned to before we use it.
+
             for ( int i = 0; i < omega.Length; i++ )
             {
                 omega[i] = syndroms[i];
 
                 for ( int lIter = 1; lIter <= i; lIter++ )
                 {
-                    omega[i] ^= gf.TableMult( syndroms[i - lIter], lambda[lIter] );
+                    omega[i] ^= gf.Multiply( syndroms[i - lIter], lambda[lIter] );
                 }
             }
         }
 
         private void ChienSearch( )
         {
-            // The chien search evaluates the lamba polynomial for the multiplicate inverse 
+            // The cheap chien search evaluates the lamba polynomial for the multiplicate inverse 
             // each element in the field other than 0.
-            // Eg,
-            // eLocs[i] = gf.EvalPoly(lambda, gf.Divide( 1, gf.Field[i] );
-            //
+
+            // Don't need to zero this.errorIndexes first - it's not used before its assigned to.
 
             for( int i = 0; i < errorIndexes.Length; i++ )
             {
@@ -349,9 +352,7 @@ namespace ErrorCorrection
             int syndrome;
             int root;
 
-            // syndroms is a class variable. We need to think about whether
-            // it has to be zeroed between calls; the answer is no because we 
-            // reassign every value outright every call.
+            // Don't need to zero this.syndromes first - it's not used before its assigned to.
 
             for( int synIndex = 0; synIndex < syndroms.Length; synIndex++ )
             {
@@ -365,7 +366,7 @@ namespace ErrorCorrection
 
                 for( int i = message.Length - 1; i > 0; i-- )
                 {
-                    syndrome = gf.TableMult( ( syndrome ^ message[i] ), root );
+                    syndrome = gf.Multiply( ( syndrome ^ message[i] ), root );
                 }
 
                 syndroms[synIndex] = syndrome ^ message[0];

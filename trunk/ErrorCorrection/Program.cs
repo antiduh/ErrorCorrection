@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Windows.Forms;
 using System.Threading;
 using System.Diagnostics;
 
@@ -22,11 +21,11 @@ namespace ErrorCorrection
         private static void PerformanceTest()
         {
             Stopwatch watch = new Stopwatch();
-            //ReedSolomonTest test = new ReedSolomonTest( 16, 11, 0x13, watch );
-            ReedSolomonTest test = new ReedSolomonTest( 256, 239, 0x011D, watch );
+            ReedSolomonTest test = new ReedSolomonTest( 16, 11, 0x13, watch );
+            //ReedSolomonTest test = new ReedSolomonTest( 256, 251, 0x011D, watch );
 
             int hitsPerIter = 20;
-            int iters = 10 * 1000;
+            int iters = 50*1000;
 
             for( int i = 0; i < iters; i++ )
             {
@@ -137,7 +136,7 @@ namespace ErrorCorrection
 
             result = field.PolyMult( left, right );
 
-            Console.Out.WriteLine( field.TableMult( 3, 7 ) ); 
+            Console.Out.WriteLine( field.Multiply( 3, 7 ) ); 
 
         }
 

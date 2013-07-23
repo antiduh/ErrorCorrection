@@ -14,7 +14,7 @@ namespace ErrorCorrection
     /// <summary>
     /// TODO: Update summary.
     /// </summary>
-    public class GaloisField
+    public sealed class GaloisField
     {
         // Note: Most examples in the comments for this class are made in GF(2^4) with p(x) = x^4 + x + 1
         // The field looks like:
@@ -140,7 +140,7 @@ namespace ErrorCorrection
             }
         }
 
-        public int TableMult( int left, int right )
+        public int Multiply( int left, int right )
         {
             // Using the multiplication table is a lot faster than the original computation.
             return this.multTable[left, right];

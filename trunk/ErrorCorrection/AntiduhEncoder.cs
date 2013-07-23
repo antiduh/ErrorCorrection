@@ -253,7 +253,7 @@ namespace ErrorCorrection
                 // Step 3 -- Z = Z - Y
                 for( int zIter = 0; zIter < z.Length; zIter++ )
                 {
-                    z[zIter] ^= gf.TableMult( g[zIter], r );
+                    z[zIter] ^= gf.Multiply( g[zIter], r );
                 }
 
                 // Step 4 -- z_0 and Z fudge.
@@ -278,7 +278,7 @@ namespace ErrorCorrection
             // Step 3 -- Z = Z - Y
             for( int zIter = 0; zIter < z.Length; zIter++ )
             {
-                z[zIter] ^= gf.TableMult( g[zIter], r );
+                z[zIter] ^= gf.Multiply( g[zIter], r );
             }
 
 
