@@ -125,7 +125,7 @@ namespace ErrorCorrection
 
             result = field.PolyMult( left, right );
 
-            Console.Out.WriteLine( field.Mult(3,7) ); 
+            Console.Out.WriteLine( field.TableMult( 3, 7 ) ); 
 
         }
 

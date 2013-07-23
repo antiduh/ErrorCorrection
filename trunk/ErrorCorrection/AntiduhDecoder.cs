@@ -193,7 +193,7 @@ namespace ErrorCorrection
 
                 for( int i = 1; i <= l; i++ )
                 {
-                    e ^= gf.Mult( dPoly[i], syndroms[k - 1 - i]);
+                    e ^= gf.TableMult( dPoly[i], syndroms[k - 1 - i]);
                 }
 
                 // --- Update estimate if e != 0 ---

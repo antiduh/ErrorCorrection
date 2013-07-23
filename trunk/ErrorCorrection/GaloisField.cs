@@ -145,7 +145,7 @@ namespace ErrorCorrection
             return this.multTable[left, right];
         }
 
-        public int Mult( int left, int right )
+        private int Mult( int left, int right )
         {
             // Conceptual notes:
             // If 
