@@ -98,7 +98,7 @@ namespace ErrorCorrection
 
                     x = gf.Field[i + 1];
 
-                    xInverse = gf.Divide( 1, x );
+                    xInverse = gf.Inverses[x];
 
                     top = gf.PolyEval( omega, xInverse );
                     top = gf.TableMult( top, x );
@@ -211,7 +211,7 @@ namespace ErrorCorrection
                         l = k - l;
 
                         // C(x) = D(x) * e^(-1);
-                        eInv = gf.Divide( 1, e );
+                        eInv = gf.Inverses[e];
                         for( int i = 0; i < corr.Length; i++ )
                         {
                             corr[i] = gf.TableMult( dPoly[i], eInv );
@@ -342,7 +342,7 @@ namespace ErrorCorrection
             {
                 eLocs[i] = gf.PolyEval(
                     lambda,
-                    gf.Divide( 1, gf.Field[i+1] )
+                    gf.Inverses[ gf.Field[i + 1] ]
                 );
             }
 
