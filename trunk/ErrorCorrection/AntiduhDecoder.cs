@@ -43,6 +43,8 @@ namespace ErrorCorrection
             this.fieldGenPoly = fieldGenPoly;
             this.numCheckBytes = (size - 1) - numDataSymbols;
 
+            this.MessageSize = size - 1;
+
             this.gf = new GaloisField( size, fieldGenPoly );
 
             // Syndrom calculation buffers
@@ -70,6 +72,8 @@ namespace ErrorCorrection
                 this.chienCache[i] = gf.Inverses[gf.Field[i + 1]];
             }
         }
+
+        public int MessageSize { get; private set; }
 
         public void Decode( int[] message )
         {

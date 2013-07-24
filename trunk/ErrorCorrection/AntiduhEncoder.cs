@@ -47,6 +47,7 @@ namespace ErrorCorrection
             this.size = size;
             this.numDataSymbols = numDataSymbols;
             this.checkBytes = (size - 1) - numDataSymbols;
+            this.MessageSize = size - 1;
 
             // symbolWidth is the number of bits per symbol, eg, GF(2^symbolWidth);
             // Code word size n is n = 2^symbolWidth - 1
@@ -60,6 +61,8 @@ namespace ErrorCorrection
 
             this.modulusResult = new int[checkBytes];
         }
+
+        public int MessageSize { get; private set; }
 
         /// <summary>
         /// Initializes the code generator polynomial according to reed-solomon encoding.
