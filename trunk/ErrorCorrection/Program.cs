@@ -21,8 +21,8 @@ namespace ErrorCorrection
         private static void PerformanceTest()
         {
             Stopwatch watch = new Stopwatch();
-            ReedSolomonTest test = new ReedSolomonTest( 16, 11, 0x13, watch );
-            //ReedSolomonTest test = new ReedSolomonTest( 256, 251, 0x011D, watch );
+            //ReedSolomonTest test = new ReedSolomonTest( 16, 11, 0x13, watch );
+            ReedSolomonTest test = new ReedSolomonTest( 256, 251, 0x011D, watch );
 
             uint hitsPerIter = 20;
             uint iters = 50*1000;

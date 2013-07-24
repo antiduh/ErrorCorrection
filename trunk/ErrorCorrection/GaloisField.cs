@@ -34,7 +34,7 @@ namespace ErrorCorrection
 
         private uint fieldGenPoly;
 
-        private uint[,] multTable;
+        private uint[] multTable;
 
         public GaloisField( uint size, uint fieldGenPoly )
         {
@@ -115,13 +115,13 @@ namespace ErrorCorrection
 
         private void BuildMultTable()
         {
-            this.multTable = new uint[this.size, this.size];
+            this.multTable = new uint[this.size * this.size];
 
             for( uint left = 0; left < size; left++ )
             {
                 for( uint right = 0; right < size; right++ )
                 {
-                    this.multTable[left, right] = InternalMult( left, right );
+                    this.multTable[left + right * size] = InternalMult( left, right );
                 }
             }
         }
@@ -143,14 +143,14 @@ namespace ErrorCorrection
         public uint Multiply( uint left, uint right )
         {
             // Using the multiplication table is a lot faster than the original computation.
-            return this.multTable[left, right];
+            return this.multTable[left + right*size];
         }
 
         public uint Divide( uint dividend, uint divisor )
         {
             // Using the original computation is the same speed as the multiplication table.
             // I don't know why.
-            return multTable[dividend, Inverses[divisor]];
+            return multTable[dividend + Inverses[divisor] * size];
         }
 
         private uint InternalMult( uint left, uint right )
