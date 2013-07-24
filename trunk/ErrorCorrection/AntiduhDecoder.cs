@@ -17,51 +17,61 @@ namespace ErrorCorrection
     public sealed class AntiduhDecoder
     {
         private readonly GaloisField gf;
-        private readonly uint size;
-        private readonly uint fieldGenPoly;
-        private readonly uint numDataSymbols;
-        private readonly uint numCheckBytes;
+        private readonly int size;
+        private readonly int fieldGenPoly;
+        private readonly int numDataSymbols;
+        private readonly int numCheckBytes;
 
-        private uint[] syndroms;
-        
-        private uint[] lambda;
-        private uint[] corrPoly;
-        private uint[] lambdaStar;
+        private readonly int[] syndroms;
 
-        private uint[] lambdaPrime;
-        
-        private uint[] omega;
-        
-        private uint[] errorIndexes;
+        private readonly int[] lambda;
+        private readonly int[] corrPoly;
+        private readonly int[] lambdaStar;
 
-        public AntiduhDecoder( uint size, uint numDataSymbols, uint fieldGenPoly )
+        private readonly int[] lambdaPrime;
+
+        private readonly int[] omega;
+
+        private readonly int[] errorIndexes;
+
+        private readonly int[] chienCache;
+
+        public AntiduhDecoder( int size, int numDataSymbols, int fieldGenPoly )
         {
             this.size = size;
             this.numDataSymbols = numDataSymbols;
             this.fieldGenPoly = fieldGenPoly;
             this.numCheckBytes = (size - 1) - numDataSymbols;
 
+            this.gf = new GaloisField( size, fieldGenPoly );
+
             // Syndrom calculation buffers
-            this.syndroms = new uint[numCheckBytes];
+            this.syndroms = new int[numCheckBytes];
 
             // Lamda calculation buffers
-            this.lambda = new uint[numCheckBytes - 1];
-            this.corrPoly = new uint[numCheckBytes - 1];
-            this.lambdaStar = new uint[numCheckBytes - 1];
+            this.lambda = new int[numCheckBytes - 1];
+            this.corrPoly = new int[numCheckBytes - 1];
+            this.lambdaStar = new int[numCheckBytes - 1];
 
             // LambdaPrime calculation buffers
-            this.lambdaPrime = new uint[numCheckBytes - 2];
+            this.lambdaPrime = new int[numCheckBytes - 2];
 
             // Omega calculation buffers
-            this.omega = new uint[numCheckBytes - 2];
+            this.omega = new int[numCheckBytes - 2];
             
             // Error position calculation
-            this.errorIndexes = new uint[size - 1];
+            this.errorIndexes = new int[size - 1];
 
-            this.gf = new GaloisField( size, fieldGenPoly );
+            // Cache of the lookup used in the ChienSearch process.
+            this.chienCache = new int[size - 1];
+
+            for( int i = 0; i < this.chienCache.Length; i++ )
+            {
+                this.chienCache[i] = gf.Inverses[gf.Field[i + 1]];
+            }
         }
 
-        public void Decode( uint[] message )
+        public void Decode( int[] message )
         {
             CalcSyndromPoly( message );
             CalcLambda();
@@ -73,20 +83,15 @@ namespace ErrorCorrection
             RepairErrors( message, errorIndexes, omega, lambdaPrime );
         }
         
-        private void RepairErrors( uint[] message, uint[] errorIndexes, uint[] omega, uint[] lp )
+        private void RepairErrors( int[] message, int[] errorIndexes, int[] omega, int[] lp )
         {
-            uint top;
-            uint bottom;
-            uint x;
-            uint xInverse;
+            int top;
+            int bottom;
+            int x;
+            int xInverse;
+            int messageLen = message.Length;
 
-
-            if( message.Length != errorIndexes.Length )
-            {
-                throw new Exception();
-            }
-
-            for( uint i = 0; i < message.Length; i++ )
+            for( int i = 0; i < messageLen; i++ )
             {
                 // If i = 2, then use a^2 in the evaluation.
                 // remember that field[i + 1] = a^i, since field[0] = 0 and field[1] = a^0.
@@ -184,10 +189,10 @@ namespace ErrorCorrection
             //   If K <= 2T goto 1
             //   Else, D(x) is the error locator polynomial.
 
-            uint k;
-            uint l;
-            uint e;
-            uint eInv; // temp to store calculation of 1 / e aka e^(-1)
+            int k;
+            int l;
+            int e;
+            int eInv; // temp to store calculation of 1 / e aka e^(-1)
 
             // --- Initial conditions ----
             // Need to clear lambda and corrPoly, but not lambdaStar. lambda and corrPoly 
@@ -320,11 +325,11 @@ namespace ErrorCorrection
 
             // Don't need to zero this.omega first - it's assigned to before we use it.
 
-            for ( uint i = 0; i < omega.Length; i++ )
+            for ( int i = 0; i < omega.Length; i++ )
             {
                 omega[i] = syndroms[i];
 
-                for ( uint lIter = 1; lIter <= i; lIter++ )
+                for ( int lIter = 1; lIter <= i; lIter++ )
                 {
                     omega[i] ^= gf.Multiply( syndroms[i - lIter], lambda[lIter] );
                 }
@@ -338,23 +343,38 @@ namespace ErrorCorrection
 
             // Don't need to zero this.errorIndexes first - it's not used before its assigned to.
 
-            for( uint i = 0; i < errorIndexes.Length; i++ )
+
+            /*
+             * This loop uses an optimization where I precalculate one lookup. 
+             * The code before the optimization was:
+                for( int i = 0; i < errorIndexes.Length; i++ )
+                {
+                    errorIndexes[i] = gf.PolyEval(
+                        lambda,
+                        gf.Inverses[ gf.Field[ i + 1] ]
+                    );
+                }
+             * We precompute the lookup gf.Inverses[ gf.Field[ i + 1] ] when creating the decoder.
+             */
+
+            for( int i = 0; i < errorIndexes.Length; i++ )
             {
                 errorIndexes[i] = gf.PolyEval(
                     lambda,
-                    gf.Inverses[ gf.Field[i + 1] ]
+                    chienCache[i]
                 );
             }
         }
 
-        private void CalcSyndromPoly( uint[] message )
+
+        private void CalcSyndromPoly( int[] message )
         {
-            uint syndrome;
-            uint root;
+            int syndrome;
+            int root;
 
             // Don't need to zero this.syndromes first - it's not used before its assigned to.
 
-            for( uint synIndex = 0; synIndex < syndroms.Length; synIndex++ )
+            for( int synIndex = 0; synIndex < syndroms.Length; synIndex++ )
             {
                 // EG, if g(x) = (x+a^0)(x+a^1)(x+a^2)(x+a^3) 
                 //             = (x+1)(x+2)(x+4)(x+8),
@@ -372,7 +392,6 @@ namespace ErrorCorrection
                 syndroms[synIndex] = syndrome ^ message[0];
             }
         }
-
 
     }
 }

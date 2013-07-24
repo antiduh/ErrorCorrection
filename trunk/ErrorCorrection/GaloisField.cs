@@ -30,43 +30,44 @@ namespace ErrorCorrection
         //      ...
         //      a^7 = field[8] = 11.
 
-        private uint size;
+        private int size;
 
-        private uint fieldGenPoly;
+        private int fieldGenPoly;
 
-        private uint[] multTable;
+        private int[] multTable;
 
-        public GaloisField( uint size, uint fieldGenPoly )
+        public GaloisField( int size, int fieldGenPoly )
         {
             this.size = size;
             this.fieldGenPoly = fieldGenPoly;
 
+            this.Field = new int[size];
+            this.Logarithms = new int[this.Field.Length];
+            this.Inverses = new int[this.Field.Length];
 
             BuildField();
             BuildLogarithms();
             BuildMultTable();
             BuildInverses();
-            
         }
 
-        public uint[] Field { get; private set; }
+        public readonly int[] Field;
 
-        public uint[] Inverses { get; private set; }
+        public readonly int[] Inverses;
 
-        public uint[] Logarithms { get; private set; }
+        public readonly int[] Logarithms;
 
         private void BuildField()
         {
-            uint next;
-            uint last;
+            int next;
+            int last;
 
-            this.Field = new uint[ size ];
 
             this.Field[0] = 0;
             this.Field[1] = 1;
             last = 1;
 
-            for( uint i = 2; i < this.Field.Length; i++ )
+            for( int i = 2; i < this.Field.Length; i++ )
             {
                 next = last << 1;
 
@@ -83,10 +84,6 @@ namespace ErrorCorrection
 
         private void BuildLogarithms()
         {
-            // Yes, we start by initializing the Inverses by *copying* from the regular field.
-            // This is because we want to randomly index into the list while initializing it.
-            this.Logarithms = new uint[this.Field.Length];
-
             // In GF(2^8) with p(x) = x^4 + x + 1, the field has elements 0, a^0, .., a^15:
             //   0  1  2  3  4  5  6   7   8  9  10  11 12  13 14  15
             // { 0, 1, 2, 4, 8, 3, 6, 12, 11, 5, 10, 7, 14, 15 13, 9}
@@ -107,7 +104,7 @@ namespace ErrorCorrection
             // This is intentional, but we have to be careful to handle it specially when we actually
             // do multiplication.
 
-            for( uint i = 0; i < this.Field.Length; i++ )
+            for( int i = 0; i < this.Field.Length; i++ )
             {
                 this.Logarithms[this.Field[i]] = i - 1;
             }
@@ -115,15 +112,16 @@ namespace ErrorCorrection
 
         private void BuildMultTable()
         {
-            this.multTable = new uint[this.size * this.size];
+            this.multTable = new int[this.size * this.size];
 
-            for( uint left = 0; left < size; left++ )
+            for( int left = 0; left < size; left++ )
             {
-                for( uint right = 0; right < size; right++ )
+                for( int right = 0; right < size; right++ )
                 {
                     this.multTable[left + right * size] = InternalMult( left, right );
                 }
             }
+
         }
 
         private void BuildInverses()
@@ -132,28 +130,27 @@ namespace ErrorCorrection
 
             // if a^9 = 10, then what is 1/a^9 aka a^(-9) ? 
 
-            this.Inverses = new uint[this.Field.Length];
             this.Inverses[0] = 0;
-            for( uint i = 1; i < this.Inverses.Length; i++ )
+            for( int i = 1; i < this.Inverses.Length; i++ )
             {
                 this.Inverses[this.Field[i]] = InternalDivide( 1, this.Field[i] );
             }
         }
 
-        public uint Multiply( uint left, uint right )
+        public int Multiply( int left, int right )
         {
             // Using the multiplication table is a lot faster than the original computation.
             return this.multTable[left + right*size];
         }
 
-        public uint Divide( uint dividend, uint divisor )
+        public int Divide( int dividend, int divisor )
         {
             // Using the original computation is the same speed as the multiplication table.
             // I don't know why.
             return multTable[dividend + Inverses[divisor] * size];
         }
 
-        private uint InternalMult( uint left, uint right )
+        private int InternalMult( int left, int right )
         {
             // Conceptual notes:
             // If 
@@ -198,7 +195,7 @@ namespace ErrorCorrection
             return this.Field[left + 1];
         }
 
-        private uint InternalDivide( uint dividend, uint divisor )
+        private int InternalDivide( int dividend, int divisor )
         {
             // Same general concept as Mult. Convert to logarithms and subtract.
 
@@ -225,9 +222,9 @@ namespace ErrorCorrection
         /// <param name="left"></param>
         /// <param name="right"></param>
         /// <returns></returns>
-        public uint[] PolyMult( uint[] left, uint[] right )
+        public int[] PolyMult( int[] left, int[] right )
         {
-            uint[] result;
+            int[] result;
             
             // Lets say we have the following two polynomials:
             //  3x^2 + 0x + 1   == int[]{1, 0, 3}
@@ -278,12 +275,12 @@ namespace ErrorCorrection
             // Done.
             
 
-            uint coeff;
-            result = new uint[left.Length + right.Length - 1];
+            int coeff;
+            result = new int[left.Length + right.Length - 1];
 
-            for( uint i = 0; i < left.Length; i++ )
+            for( int i = 0; i < left.Length; i++ )
             {
-                for( uint j = 0; j < right.Length; j++ )
+                for( int j = 0; j < right.Length; j++ )
                 {
                     coeff = InternalMult( left[i], right[j] );
 
@@ -294,19 +291,19 @@ namespace ErrorCorrection
             return result;
         }
 
-        public uint PolyEval( uint[] poly, uint x )
+        public int PolyEval( int[] poly, int x )
         {
-            uint sum;
-            uint xLog;
-            uint coeffLog;
-            uint power;
+            int sum;
+            int xLog;
+            int coeffLog;
+            int power;
 
             // The constant term in the poly requires no multiplication.
             sum = poly[0];
 
             xLog = Logarithms[x];
 
-            for( uint i = 1; i < poly.Length; i++ )
+            for( int i = 1; i < poly.Length; i++ )
             {
                 // The polynomial at this spot has some coefficent, call it a^j.
                 // x itself has some value, call it a^k.
@@ -330,7 +327,7 @@ namespace ErrorCorrection
             return sum;
         }
 
-        public static string PolyPrint( uint[] poly )
+        public static string PolyPrint( int[] poly )
         {
             StringBuilder builder = new StringBuilder(poly.Length * 3);
 
