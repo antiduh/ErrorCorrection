@@ -12,8 +12,172 @@ namespace ErrorCorrection
     using System.Text;
 
     /// <summary>
-    /// TODO: Update summary.
+    /// Implements polynomial math for polynomials over a galois field with characteristic 2 (a binary 
+    /// galois field), with restrictions on the practical size of the field. 
     /// </summary>
+    /// <remarks>
+    /// This paper has a Reed Solomon-relevant intro to GFs:
+    /// http://downloads.bbc.co.uk/rd/pubs/whp/whp-pdf-files/WHP031.pdf
+    /// 
+    /// A Galois field is an arithmetical field that is:
+    ///   - Finite: Arithmetic operations are defined for only the elements defined to be in the field,
+    ///             and there are a finite number of elements.
+    ///   - Closed: Arithmetic operations on elements of the field return a value also in the field.
+    /// 
+    /// A Galois field's size is a parameter of the field, but only certain sizes can exist. The
+    /// field must be a size = p^k where p is prime and k is a positive integer. p is also called the 
+    /// characteristic of the field.
+    /// 
+    /// Arithmetic over a related field GF(p) can simply be arithmetic modulo p. Take for example GF(5), whose
+    /// elements would be {0, 1, 2, 3, 4}. 2 + 4 over the field GF(5) would be (2+4) mod 5 = 6 mod 5 = 1.
+    /// 
+    /// Arithmetic over GF(p^k) isn't as simple as taking modulus p^k, since the ring of integers
+    /// modulo p^k doesn't meet the definition of a field. Some other mechanism must be used to define
+    /// arithmetic over GF(p^k), and in fact, it is done using polynomials of elements over GF(p).
+    /// 
+    /// --
+    /// 
+    /// In Galois Fields, non-zero elements of the field form a multiplicative group that is also a cyclic
+    /// group. For certain elements of the field, successive powers of these elements form a cyclic group 
+    /// that contains the entire set of non-zero elements in the field. These elements are called primitive
+    /// elements, usually denoted as some value 'a'. Since successive powers of these elements forms
+    /// a complete cyclic group containing all non-zero elements of the field - all elements are
+    /// represented, and represented only once - we can represent the elements of the field indexed
+    /// by the power of some primitive element a, since we can guarantee that there is a one-to-one
+    /// mapping from some power a^i to some element in the field. The field can be represented in 
+    /// an alternate representation { 0, a^0, a^1, ..., a^(n-2) }, which is particularly useful when
+    /// defining multiplication.
+    /// 
+    /// For example, consider GF(5) - this is prime group, so we can choose to define arithmetic as 
+    /// simply being addition, etc, modulo p. 
+    /// 
+    /// The elements of GF(5) are {0, 1, 2, 3, 4}. 2 + 4 = 6 mod 5 = 1. 2 * 4 = 8 mod 5 = 3. 
+    /// 
+    /// Lets test to see if the element 2 in GF(5) is also a primitive element:
+    ///   - 2^1 =  2
+    ///   - 2^2 =  4
+    ///   - 2^3 =  8 mod 5 = 3
+    ///   - 2^5 = 16 mod 5 = 1
+    /// 
+    /// Each element was generated, and generated only once, thus the element 2 in GF(5) is primitive in GF(5).
+    /// We can now write the elements of GF(5) index by a=2:
+    ///  {0, a^0, a^1, a^2, a^3} =  
+    ///  {0    1    2,   4,   3}
+    ///
+    /// Consider GF(7), and see if 2 is a primitive element in GF(7):
+    ///  - 2^0 = 1
+    ///  - 2^1 = 2
+    ///  - 2^2 = 4
+    ///  - 2^3 = 8 mod 7 = 1    xxx
+    ///  
+    /// 2 in GF(7) forms a cyclic group {2, 4, 1}, but isn't a complete cyclic group, 
+    /// and thus is not a primitive element in GF(7).
+    /// 
+    /// -- 
+    /// 
+    /// Recall that we don't currently have a definition for how to perform arithmetic on elements 
+    /// from some arbitrary field GF(p^k), since our go-to operator modulus doesn't fit the bill - 
+    /// the ring of integers modulo p^k doesn't meet the definitions for a field.
+    /// 
+    /// However, we *can* use modulus to define arthimetic on Galois Fields of the form GF(p). Then, we 
+    /// can use polynomials over GF(p), which we are now equiped to compute, as the basis for defining
+    /// arithmetic over some arbitrary GF(p^k).
+    ///
+    /// A polynomial over some arbitrary GF(x) has polynomial coefficients that are elements of GF(x). 
+    /// Consider the following equation of polynomials over the GF(5) that is using modulus to define
+    /// arithmetic:
+    ///    ( 3x^2 + x + 2 ) + ( 3x^2 + x + 3) = ( 6x^2 + 2x + 5 ) = ( x^2 + 2x + 0 )
+    ///
+    /// We can represent *elements* of GF(p^k) as *polynomials* over GF(p).
+    /// For instance, element '7' in GF(2^4) would be the following polynomial over GF(2):
+    ///    0x^3 + 1x^2 + 1x + 1. 
+    /// 
+    /// And element '10' would be the polynomial:
+    ///    1x^3 + 0x^2 + 1x + 0
+    /// 
+    /// We can then add those two polynomials together according to our definition of arithmetic in GF(2):
+    ///    1x^3 + 1x^2 + 2x + 1  which reduces modulo 2 to 
+    ///    1x^3 + 1x^2 + 0x + 1
+    ///    
+    /// Which, when converted back to an element in GF(2^4) would be 13.
+    /// Thus, we've defined elemental addition in GF(2^4) to be polynomial addition in
+    /// the system of GF(2) equipped with elemental addition modulu 2. 
+    /// 
+    /// We can similarly use GF(2) with modulu to define multiplication in GF(2^4), however, we
+    /// run into one little snag - we end up with polynomials with higher-power terms than defined
+    /// in GF(2^4):
+    /// 
+    /// Multiply 7 * 6 in GF(2^4):
+    ///   (x^2 + x + 1) * (x^2 + x) = 
+    ///   (x^4 + x^3) + (x^3 + x^2) + (x^2 + x) = 
+    ///   x^4 + 2x^3 + 2x^2 + x + 0 =
+    ///   x^4 + 0x^3 + 0x^2 + x + 0 =
+    ///   x^4 + x
+    /// 
+    /// We're left with this x^4 term that has no representation in GF(2^4). 
+    /// 
+    /// However, if we can find a irreducible polynomial in GF(p) that has degree k, then we can 
+    /// perform polynomial division and use the remainder as the result, effectively, implmenting
+    /// polynomial modulus. The irreducible polynomial must have a non-zero term of degree k (it must be monic)
+    /// for it to have the reducing strength required to remove polynomial terms that are too high order.
+    /// 
+    /// For GF(2^4), such a polynomial might be x^4 + x + 1
+    /// 
+    /// Thus, we could take our earlier result x^4 + x and reduce it x^4 + x + 1 via polynomial division:
+    ///               1 
+    ///             __________
+    /// x^4 + x + 1 | x^4 + x + 0 
+    ///             - x^4 + x + 1
+    ///                 0 + 0 + 1
+    ///                 
+    /// And thus, we're left with just 1. This was a polynomial in GF(2), which
+    /// we can convert back to an element in GF(2^4), which is simply element 1.
+    /// 
+    /// Thus, for the field GF(2^4), with reducing polynomial x^4 + x + 1, 
+    ///  7 * 6 = 1.
+    ///  
+    /// We call this reducing polynomial the generator polynomial p(x).
+    ///
+    /// --
+    /// 
+    /// The primitive elements of the field GF(p^k) also form roots of all generator polynomials.
+    /// For instance, the generator polynomial we chose above:
+    ///   p(x) = x^4 + x + 1     --> 
+    ///   p(a) = a^4 + a + 1 = 0 ---> 
+    ///    a^4 = a + 1
+    /// 
+    /// We have defined addition and multiplication for non-prime field of the form GF(p^k) 
+    /// by using polynomal representation in GF(p) equipped with modular arithmetic.
+    /// 
+    /// We can use this fact to generate the field of GF(p^k) in terms of the elements { 0, a^0, .., a^(n-2) }
+    /// 
+    /// Suppose we pick 2 as our primitive element for GF(2^4), and use reducing polynomial x^4 + x + 1, and thus
+    /// know that a^4 = a + 1
+    /// 
+    /// 
+    /// a^0 =        = 1 
+    /// a^1 =        = 2
+    /// a^2 =        = 4
+    /// a^3 =        = 8
+    /// a^4 = a + 1  = 3
+    /// a^5 = a(a^4 + 1) = a(a+1) = a^2 + a = 6
+    /// ...
+    /// 
+    /// And thus, we can represent the entire field indexed by the power of our primitive element, and implement
+    /// multiplication and division using logarithms.
+    /// 
+    /// --
+    /// 
+    /// This design uses the following optimizating restrictions:
+    ///  - The field characteristic must be 2; that is the field must be of the form GF(2^m).
+    ///  - The generator polynomial is specified in the form of a 32-bit 'int' variable,
+    ///    limiting the length of the polynomial to 32 coefficients. This limit will never be
+    ///    practically hit, due to the next restriction.
+    ///  - Multiplication and division are implemented using a look-up table, for performance.
+    ///    Large galois fields require n^2 memory to store the table. For GF(2^8), this is 
+    ///    256 * 256 == 65536 entries, times 4 bytes per entry = 256 kiB.
+    ///    GF(2^16) would require 16 GiB of memory.
+    /// </remarks>
     public sealed class GaloisField
     {
         // Note: Most examples in the comments for this class are made in GF(2^4) with p(x) = x^4 + x + 1
@@ -30,12 +194,31 @@ namespace ErrorCorrection
         //      ...
         //      a^7 = field[8] = 11.
 
+        /// <summary>
+        /// Stores the total number of elements in the field. As a consequence of the structure of 
+        /// Galois Feilds, this value must be of the form p^k where p is a prime number and k is a 
+        /// positive integer.
+        /// </summary>
         private int size;
 
+        /// <summary>
+        /// The primitive polynomial used to generate the elements of the field by taking successive powers of 
+        /// the polynomial.
+        /// </summary>
         private int fieldGenPoly;
 
+        /// <summary>
+        /// Caches multiplication values for field elements.
+        /// </summary>
         private int[] multTable;
 
+        /// <summary>
+        /// Constructs a new instance of the GaloisField class. 
+        /// </summary>
+        /// <param name="size">The total number of elements in the field</param>
+        /// <param name="fieldGenPoly">A primitive element of the field, represented in polynomial form,
+        /// that is used to generate the elements of the field in an ordered manner. The bits of the value 
+        /// indicate the coefficients of the polynomial, eg, 0b1011 indicate 1*x^3 + 0*x^2 + 1*x^1 + 1*x^0.</param>
         public GaloisField( int size, int fieldGenPoly )
         {
             this.size = size;
@@ -51,8 +234,15 @@ namespace ErrorCorrection
             BuildInverses();
         }
 
+        /// <summary>
+        /// The elements of the field, ordered as generated by the field generator polynomial.
+        /// </summary>
         public readonly int[] Field;
 
+        /// <summary>
+        /// Stores the multiplicative inverses of the elements of the field, eg
+        /// the value of 1/a^9 is stored 
+        /// </summary>
         public readonly int[] Inverses;
 
         public readonly int[] Logarithms;

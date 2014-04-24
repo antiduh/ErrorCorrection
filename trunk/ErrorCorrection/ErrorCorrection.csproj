@@ -66,11 +66,8 @@
     <Compile Include="AntiduhDecoder.cs" />
     <Compile Include="AntiduhEncoder.cs" />
     <Compile Include="GaloisField.cs" />
-    <Compile Include="GenericGF.cs" />
-    <Compile Include="GenericGFPoly.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="ReedSolomonEncoder.cs" />
     <Compile Include="RsDecoderStream.cs" />
     <Compile Include="RsEncoderStream.cs" />
     <EmbeddedResource Include="Properties\Resources.resx">
