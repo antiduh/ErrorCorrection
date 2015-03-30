@@ -210,7 +210,7 @@ namespace ErrorCorrection
         /// <summary>
         /// Caches multiplication values for field elements.
         /// </summary>
-        private int[] multTable;
+        private int[,] multTable;
 
         /// <summary>
         /// Constructs a new instance of the GaloisField class. 
@@ -302,13 +302,13 @@ namespace ErrorCorrection
 
         private void BuildMultTable()
         {
-            this.multTable = new int[this.size * this.size];
+            this.multTable = new int[this.size,this.size];
 
             for( int left = 0; left < size; left++ )
             {
                 for( int right = 0; right < size; right++ )
                 {
-                    this.multTable[left + right * size] = InternalMult( left, right );
+                    this.multTable[left, right] = InternalMult( left, right );
                 }
             }
 
@@ -330,14 +330,14 @@ namespace ErrorCorrection
         public int Multiply( int left, int right )
         {
             // Using the multiplication table is a lot faster than the original computation.
-            return this.multTable[left + right*size];
+            return this.multTable[left, right];
         }
 
         public int Divide( int dividend, int divisor )
         {
             // Using the original computation is the same speed as the multiplication table.
             // I don't know why.
-            return multTable[dividend + Inverses[divisor] * size];
+            return this.multTable[dividend, Inverses[divisor]];
         }
 
         private int InternalMult( int left, int right )
