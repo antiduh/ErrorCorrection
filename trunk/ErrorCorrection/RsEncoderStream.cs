@@ -17,31 +17,39 @@ namespace ErrorCorrection
     /// </summary>
     public class RsEncoderStream : Stream
     {
-        private Stream readStream;
+        private Stream stream;
 
         private AntiduhEncoder encoder;
 
-        private int[] chunkBuffer;
+        private int[] blockBuffer;
+        private byte[] outputBuffer;
 
-        private int remainingChunk;
-
-        public RsEncoderStream( Stream readStream, AntiduhEncoder encoder ) : base()
+        private int checkSymbols;
+        
+        public RsEncoderStream( Stream stream, AntiduhEncoder encoder ) : base()
         {
-            this.readStream = readStream;
+            if( stream.CanWrite == false )
+            {
+                throw new ArgumentException( "Must be a writable stream", "stream" );
+            }
+
+            this.stream = stream;
             this.encoder = encoder;
 
-            this.chunkBuffer = new int[encoder.MessageSize];
-            this.remainingChunk = 0;
+            this.blockBuffer = new int[encoder.CodeWordSize];
+            this.checkSymbols = encoder.CodeWordSize - encoder.PlainTextSize;
+
+            this.outputBuffer = new byte[encoder.CodeWordSize];
         }
 
         public override bool CanWrite
         {
-            get { return false; }
+            get { return true; }
         }
 
         public override bool CanRead
         {
-            get { return true; }
+            get { return false; }
         }
 
         public override bool CanSeek
@@ -51,13 +59,13 @@ namespace ErrorCorrection
 
         public override bool CanTimeout
         {
-            get { return readStream.CanTimeout; }
+            get { return stream.CanTimeout; }
         }
 
         public override void Close()
         {
             base.Close();
-            readStream.Close();
+            stream.Close();
         }
 
         public override long Position
@@ -89,7 +97,24 @@ namespace ErrorCorrection
 
         public override void Write( byte[] buffer, int offset, int count )
         {
-            throw new InvalidOperationException();
+            if( count != this.encoder.PlainTextSize )
+            {
+                throw new InvalidOperationException( "RsEncoderStream only accepts writes that are exactly the size " + 
+                    "of a single reed-solmon block. Use BlockStreamWriteAdapter to buffer writes of differing sizes." );
+            }
+
+            Array.Clear( this.blockBuffer, 0, this.checkSymbols );
+
+            Array.Copy( buffer, offset, this.blockBuffer, this.checkSymbols, count );
+
+            this.encoder.Encode( this.blockBuffer );
+
+            for( int i = 0; i < this.blockBuffer.Length; i++ )
+            {
+                this.outputBuffer[i] = (byte)this.blockBuffer[i];
+            }
+
+            this.stream.Write( this.outputBuffer, 0, this.outputBuffer.Length );
         }
 
         public override void WriteByte( byte value )
@@ -99,30 +124,12 @@ namespace ErrorCorrection
 
         public override void Flush()
         {
-            
+            this.stream.Flush();
         }
 
         public override int Read( byte[] buffer, int offset, int count )
         {
-            // We can only read from the encoder in fixed-length chunks, eg, 15 bytes for GF(2^4). 
-            // Call this quanity 'chunkSize'.
-            // If the reader ever asks for data from us with length shorter than chunkSize or 
-            // not an exact multiple of chunkSize, we have to read the whole chunk, give them the 
-            // portion they asked for, and buffer the rest.
-            // The next time they call us, we'll first give them what's left and then anything left 
-            // over we'll handle the same way.
-
-            // Furthermore, the encoder doesn't support offset encoding, so we have to read into
-            // chunkBuffer and then array copy into the destination buffer at the requested index.
-
-            if( remainingChunk == 0 )
-            {
-                // Chunk buffer is empty. Fill it up, give the user something out of it.
-
-                //readStream.Read( chunkBuffer, 0, chunkBuffer.Length );
-            }
-
-            return 0;
+            throw new InvalidOperationException();
         }
     }
 }

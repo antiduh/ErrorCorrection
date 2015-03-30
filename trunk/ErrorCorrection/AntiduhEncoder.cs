@@ -47,7 +47,7 @@ namespace ErrorCorrection
             this.size = size;
             this.numDataSymbols = numDataSymbols;
             this.checkBytes = (size - 1) - numDataSymbols;
-            this.MessageSize = size - 1;
+            this.CodeWordSize = size - 1;
 
             // symbolWidth is the number of bits per symbol, eg, GF(2^symbolWidth);
             // Code word size n is n = 2^symbolWidth - 1
@@ -62,7 +62,26 @@ namespace ErrorCorrection
             this.modulusResult = new int[checkBytes];
         }
 
-        public int MessageSize { get; private set; }
+
+        /// <summary>
+        /// The number of symbols that make up an entire encoded message. An encoded message is composed of the
+        /// original data plus the parity bits.
+        /// </summary>
+        public int CodeWordSize { get; private set; }
+
+        /// <summary>
+        /// The number of symbols that make up the original data.
+        /// </summary>
+        public int PlainTextSize
+        {
+            get
+            {
+                // numDataSymbols is frequently accessed during encoding, so I want to keep its access fast. So we 
+                // store it and internally reference it via this.numDataSymbols, and provide a property to externally access it.
+                // Don't refactor this into an auto-property.
+                return this.numDataSymbols;
+            }
+        }
 
         /// <summary>
         /// Initializes the code generator polynomial according to reed-solomon encoding.

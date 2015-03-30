@@ -43,7 +43,7 @@ namespace ErrorCorrection
         /// <summary>
         /// Indicates the number of bytes that are stored in the buffer.
         /// </summary>
-        private int leftoversConsumption;
+        private int leftoversSize;
 
         /// <summary>
         /// Inititializes a new instance of the BlockStreamWriteAdapter class.
@@ -61,57 +61,11 @@ namespace ErrorCorrection
             this.BlockSize = blockSize;
 
             this.leftovers = new byte[blockSize];
-            this.leftoversConsumption = 0;
+            this.leftoversSize = 0;
         }
 
         public int BlockSize { get; private set; }
 
-        public override void Write( byte[] buffer, int offset, int count )
-        {
-            // Count up how many bytes we have in the leftovers and in the write request.
-            // If we have enough to perform a full write to blockSink, then do a write.
-            
-            // Doing a write:
-            //  - If we have anything in the leftovers, then consume bytes from the write request
-            //    to fill it up to a full block size, then write that to the blockSink.
-            //
-            //  - For as many full blocks that are left in the request, send requests directly to blockSink.
-            //
-            //  - If any bytes are left over from the request, they are saved to the leftovers for the next iteration.
-
-            // ------ Step 1: Figure out if we have enough to do a write at all ------
-
-            if( this.leftoversConsumption + count >= 16 )
-            {
-
-                // ------ Step 2: Write what we can from the leftovers ------
-
-                // ------ Step 3: Write what we can from the request ------
-
-            }
-
-            // ------  Step 4: Save any unwritten bytes to the buffer ------
-            if( count > 0 )
-            {
-                // Check to make sure we have enough room in the unwritten buffer to store the leftovers.
-                // If we don't, we screwed up somewhere and should've written more.
-
-                Debug.Assert(
-                    count + this.leftoversConsumption < this.BlockSize,
-                    "Attempted to save leftovers equal or larger than a block",
-                    "The point of leftovers is to store bytes that couldn't be written because they didn't fill a full block. "
-                      + "However, we found that we have enough leftovers to fill a full block which means we should've written one more "
-                      + "block to the output, but didn't. The math is broken somewhere"
-                );
-
-                // If zero bytes are stored in the unwritten buffer, then the first index to write to is zero.
-                // The first index to write to in the buffer is the bufferConsumption.
-
-                Array.Copy( buffer, offset, this.leftovers, this.leftoversConsumption, count );
-            }
-
-
-        }
 
         public override bool CanRead
         {
@@ -128,9 +82,119 @@ namespace ErrorCorrection
             get { return false; }
         }
 
+        public override long Position
+        {
+            get
+            {
+                throw new NotSupportedException();
+            }
+            set
+            {
+                throw new NotSupportedException();
+            }
+        }
+
+        public override long Length
+        {
+            get { throw new NotSupportedException(); }
+        }
+
+        public override void Write( byte[] buffer, int offset, int count )
+        {
+            // Count up how many bytes we have in the leftovers and in the write request.
+            // If we have enough to perform a full write to blockSink, then do a write.
+
+            // Doing a write:
+            //  - If we have anything in the leftovers, then consume bytes from the write request
+            //    to fill it up to a full block size, then write that to the blockSink.
+            //
+            //  - For as many full blocks that are left in the request, send requests directly to blockSink.
+            //
+            //  - If any bytes are left over from the request, they are saved to the leftovers for the next iteration.
+
+            // ------ Step 1: Figure out if we have enough to do a write at all ------
+
+            if( this.leftoversSize + count >= BlockSize )
+            {
+
+                // ------ Step 2: Write what we can from the leftovers ------
+
+                if( leftoversSize > 0 )
+                {
+                    int copyLength = this.BlockSize - leftoversSize;
+
+                    Array.Copy( buffer, offset, this.leftovers, this.leftoversSize, copyLength );
+
+                    this.blockSink.Write( this.leftovers, 0, this.BlockSize );
+
+                    count -= copyLength;
+                    offset += copyLength;
+                    this.leftoversSize = 0;
+                }
+
+                // ------ Step 3: Write what we can from the request ------
+
+                while( count >= this.BlockSize )
+                {
+                    this.blockSink.Write( buffer, offset, this.BlockSize );
+
+                    count -= this.BlockSize;
+                    offset += this.BlockSize;
+                }
+
+            }
+
+            // ------  Step 4: Save any unwritten bytes to the buffer ------
+
+            if( count > 0 )
+            {
+                // Check to make sure we have enough room in the unwritten buffer to store the leftovers.
+                // If we don't, we screwed up somewhere and should've written more.
+
+                Debug.Assert(
+                    count + this.leftoversSize < this.BlockSize,
+                    "Attempted to save leftovers equal or larger than a block",
+                    "The point of leftovers is to store bytes that couldn't be written because they didn't fill a full block. "
+                      + "However, we found that we have enough leftovers to fill a full block which means we should've written one more "
+                      + "block to the output, but didn't. The math is broken somewhere"
+                );
+
+                // If zero bytes are stored in the unwritten buffer, then the first index to write to is zero.
+                // The first index to write to in the buffer is the bufferConsumption.
+
+                Array.Copy( buffer, offset, this.leftovers, this.leftoversSize, count );
+
+                this.leftoversSize += count;
+            }
+
+
+        }
+
+        public override int Read( byte[] buffer, int offset, int count )
+        {
+            throw new NotSupportedException();
+        }
+
+        public override void SetLength( long value )
+        {
+            throw new NotSupportedException();
+        }
+
+        public override long Seek( long offset, SeekOrigin origin )
+        {
+            throw new NotSupportedException();
+        }
+
         public override void Flush()
         {
-            
+            // Write zeros to the rest of the leftovers then write a single block.
+
+            if( this.leftoversSize > 0 )
+            {
+                Array.Clear( this.leftovers, this.leftoversSize, this.BlockSize - this.leftoversSize );
+                this.blockSink.Write( this.leftovers, 0, this.BlockSize );
+                this.blockSink.Flush();
+            }
         }
     }
 }

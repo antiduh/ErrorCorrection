@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Diagnostics;
+using System.IO;
 
 namespace ErrorCorrection
 {
@@ -14,8 +15,36 @@ namespace ErrorCorrection
         [STAThread]
         static void Main()
         {
-            PerformanceTest();
+            StreamTest();
             Console.Out.Flush();
+        }
+
+        private static void StreamTest()
+        {
+            FileStream file = new FileStream( "test.bin", FileMode.OpenOrCreate, FileAccess.ReadWrite );
+
+            // GF(2^8), k = 239, 2t = 16.
+            AntiduhEncoder encoder = new AntiduhEncoder( 256, 239, 0x011D );
+
+            RsEncoderStream encoderStream = new RsEncoderStream( file, encoder );
+
+            BlockStreamWriteAdapter writeAdapter = new BlockStreamWriteAdapter( encoderStream, encoder.PlainTextSize );
+
+            Random rand = new Random();
+
+            byte[] buffer = new byte[encoder.CodeWordSize * 5];
+
+            for( int i = 0; i < buffer.Length; i++ )
+            {
+                buffer[i] = (byte)( i % 256 );
+            }
+
+            for( int i = 0; i < 10 * 1000 * 1000; i++ )
+            {
+                int length = rand.Next( 1, buffer.Length + 1 );
+
+                writeAdapter.Write( buffer, 0, length );
+            }
         }
 
         private static void PerformanceTest()
@@ -147,13 +176,19 @@ namespace ErrorCorrection
 
             // GF(2^4), with field generator poly p(x) = x^4 + x + 1 --> 10011 == 19 == 0x13
             // size = 16, n = 15, k = 11, 2t = 4
-            AntiduhEncoder encoder = new AntiduhEncoder( 16, 11, 0x13 );
-            int[] message = new int[] { 0, 0, 0, 0, 12, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
+            //AntiduhEncoder encoder = new AntiduhEncoder( 16, 11, 0x13 );
+            //int[] message = new int[] { 0, 0, 0, 0, 12, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
 
             // GF(2^8) with field generatory poly p(x) = x^8 + x^4 + x^3 + x^2 + 1 ---> 100011101 == 285 == 0x011D
             // n = 255, k = 239, 2t = 16
-            //AntiduhEncoder encoder = new AntiduhEncoder( 256, 239, 0x011D );
+            AntiduhEncoder encoder = new AntiduhEncoder( 256, 239, 0x011D );
+            int[] message = new int[255];
+            for( int i = 16; i < message.Length; i++ )
+            {
+                message[i] = i;
+            }
 
+            
             encoder.Encode( message );
             ArrayPrint( message );
             Console.Out.WriteLine( GaloisField.PolyPrint( message ) );
