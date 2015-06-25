@@ -43,7 +43,7 @@ namespace ErrorCorrection
             this.fieldGenPoly = fieldGenPoly;
             this.numCheckBytes = (size - 1) - numDataSymbols;
 
-            this.MessageSize = size - 1;
+            this.CodeWordSize = size - 1;
 
             this.gf = new GaloisField( size, fieldGenPoly );
 
@@ -73,7 +73,19 @@ namespace ErrorCorrection
             }
         }
 
-        public int MessageSize { get; private set; }
+        /// <summary>
+        /// The number of symbols that make up an entire received codeword, which includes parity symbols
+        /// and original message symbols.
+        /// </summary>
+        public int CodeWordSize { get; private set; }
+
+        /// <summary>
+        /// How many symbols per code word are used for storing original message symbols.
+        /// </summary>
+        public int PlainTextSize
+        {
+            get { return this.numDataSymbols; }
+        }
 
         public void Decode( int[] message )
         {
