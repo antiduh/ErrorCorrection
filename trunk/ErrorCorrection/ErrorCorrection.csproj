@@ -69,6 +69,7 @@
   <ItemGroup>
     <Compile Include="AntiduhDecoder.cs" />
     <Compile Include="AntiduhEncoder.cs" />
+    <Compile Include="BlockStreamReadAdapter.cs" />
     <Compile Include="BlockStreamWriteAdapter.cs" />
     <Compile Include="GaloisField.cs" />
     <Compile Include="Program.cs" />
