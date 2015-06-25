@@ -15,12 +15,132 @@ namespace ErrorCorrection
         [STAThread]
         static void Main()
         {
-            StreamTest();
+            ReadStreamTest();
             Console.Out.Flush();
         }
 
-        private static void StreamTest()
+        private static void ReadStreamTest()
         {
+            FileStream file = new FileStream( "test.bin", FileMode.OpenOrCreate, FileAccess.ReadWrite );
+
+            AntiduhDecoder decoder = new AntiduhDecoder( 256, 239, 0x011D );
+
+            RsDecoderStream decoderStream = new RsDecoderStream( file, decoder );
+
+            BlockStreamReadAdapter readAdapter = new BlockStreamReadAdapter( decoderStream, decoder.PlainTextSize );
+
+            Random rand = new Random();
+
+            byte[] buffer = new byte[200];
+
+            long position = 0;
+
+            Array.Clear( buffer, 0, buffer.Length );
+
+            for( int test = 0; test < 150 * 1000; test++ )
+            {
+                int length = rand.Next( 1, buffer.Length + 1 );
+                int amountRead = readAdapter.Read( buffer, 0, length );
+
+                if( amountRead == 0 )
+                {
+                    return;
+                }
+
+                for( int i = 0; i < amountRead; i++ )
+                {
+                    if( buffer[i] != position % 256 )
+                    {
+                        throw new Exception();
+                    }
+
+                    position++;
+                }
+            }
+
+        }
+
+        private static void WriteBlockStreamTest()
+        {
+            if( File.Exists( "block.bin" ) )
+            {
+                File.Delete( "block.bin" );
+            }
+
+            FileStream file = new FileStream( "block.bin", FileMode.OpenOrCreate, FileAccess.ReadWrite );
+                        
+            BlockStreamWriteAdapter writeAdapter = new BlockStreamWriteAdapter( file, 239 );
+
+            Random rand = new Random();
+
+            byte[] buffer = new byte[255 * 5];
+            int position = 0;
+
+
+            for( int test = 0; test < 5; test++ )
+            {
+                int length = rand.Next( 1, buffer.Length + 1 );
+
+                for( int i = 0; i < length; i++ )
+                {
+                    buffer[i] = (byte)position;
+                    position = ( position + 1 ) % 256;
+                }
+
+                writeAdapter.Write( buffer, 0, length );
+            }
+
+            writeAdapter.Close();
+            file.Close();
+
+        }
+
+        private static void ReadBlockStreamTest()
+        {
+            FileStream file = new FileStream( "block.bin", FileMode.OpenOrCreate, FileAccess.ReadWrite );
+
+            BlockStreamReadAdapter readAdapter = new BlockStreamReadAdapter( file, 239 );
+
+            Random rand = new Random();
+
+            byte[] buffer = new byte[200];
+
+            long position = 0;
+
+            Array.Clear( buffer, 0, buffer.Length );
+
+            for( int test = 0; test < 150 * 1000; test++ )
+            {
+                int length = buffer.Length;
+
+                int amountRead = readAdapter.Read( buffer, 0, length );
+
+                if( amountRead == 0 )
+                {
+                    Console.Out.WriteLine( "Block read test successful" );
+                    return;
+                }
+
+                for( int i = 0; i < amountRead; i++ )
+                {
+                    if( buffer[i] != position % 256 )
+                    {
+                        throw new Exception();
+                    }
+
+                    position++;
+                }
+            }
+        }
+
+
+        private static void WriteStreamTest()
+        {
+            if( File.Exists( "test.bin" ) )
+            {
+                File.Delete( "test.bin" );
+            }
+
             FileStream file = new FileStream( "test.bin", FileMode.OpenOrCreate, FileAccess.ReadWrite );
 
             // GF(2^8), k = 239, 2t = 16.
@@ -33,15 +153,18 @@ namespace ErrorCorrection
             Random rand = new Random();
 
             byte[] buffer = new byte[encoder.CodeWordSize * 5];
+            int position = 0;
 
-            for( int i = 0; i < buffer.Length; i++ )
-            {
-                buffer[i] = (byte)( i % 256 );
-            }
-
-            for( int i = 0; i < 10 * 1000 * 1000; i++ )
+            
+            for( int test = 0; test <  5; test++ )
             {
                 int length = rand.Next( 1, buffer.Length + 1 );
+
+                for( int i = 0; i < length; i++ )
+                {
+                    buffer[i] = (byte)position;
+                    position = ( position + 1 ) % 256;
+                }
 
                 writeAdapter.Write( buffer, 0, length );
             }
