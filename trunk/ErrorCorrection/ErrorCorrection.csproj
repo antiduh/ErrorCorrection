@@ -71,9 +71,12 @@
     <Compile Include="AntiduhEncoder.cs" />
     <Compile Include="BlockStreamReadAdapter.cs" />
     <Compile Include="BlockStreamWriteAdapter.cs" />
+    <Compile Include="ByteImpl\GaloisField256.cs" />
     <Compile Include="GaloisField.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ByteImpl\Rs256Decoder.cs" />
+    <Compile Include="ByteImpl\Rs256Encoder.cs" />
     <Compile Include="RsDecoderStream.cs" />
     <Compile Include="RsEncoderStream.cs" />
     <EmbeddedResource Include="Properties\Resources.resx">
