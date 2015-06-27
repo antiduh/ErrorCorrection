@@ -28,6 +28,17 @@ namespace ErrorCorrection
             GaloisField256 field = new GaloisField256( 256, 0x011d );
             
             VerifyField( field );
+
+            Rs256Encoder encoder = new Rs256Encoder( 256, 239, 0x011d );
+
+            byte[] message = new byte[encoder.EncodedSize];
+
+            for ( int i = encoder.CheckWords; i < encoder.EncodedSize; i++ )
+            {
+                message[i] = (byte)1; 
+            }
+
+            encoder.Encode( message );
         }
 
         private static void PrimeFinder()
