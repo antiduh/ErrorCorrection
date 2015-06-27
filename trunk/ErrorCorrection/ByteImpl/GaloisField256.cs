@@ -151,6 +151,12 @@ namespace ErrorCorrection.ByteImpl
         private void BuildInverses()
         {
             this.Inverses = new byte[this.size];
+
+            this.Inverses[0] = 0;
+            for ( int i = 1; i < this.Inverses.Length; i++ )
+            {
+                this.Inverses[this.Field[i]] = InternalDivide( 1, this.Field[i] );
+            }
         }
 
         private byte InternalMult( int left, int right )
