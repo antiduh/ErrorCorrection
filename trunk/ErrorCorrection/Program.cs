@@ -24,21 +24,53 @@ namespace ErrorCorrection
         {
             // Taken from the DVB-T standard
             // p(x) = x^8 + x^4 + x^3 + x^2 + x^0 == 100011101 = 0x011d
-
-            GaloisField256 field = new GaloisField256( 256, 0x011d );
             
-            VerifyField( field );
-
             Rs256Encoder encoder = new Rs256Encoder( 256, 239, 0x011d );
+            Rs256Decoder decoder = new Rs256Decoder( 256, 239, 0x011d );
 
             byte[] message = new byte[encoder.EncodedSize];
+            byte[] origMessage = new byte[encoder.EncodedSize];
 
             for ( int i = encoder.CheckWords; i < encoder.EncodedSize; i++ )
             {
-                message[i] = (byte)1; 
+                origMessage[i] = (byte)i; 
             }
 
-            encoder.Encode( message );
+            encoder.Encode( origMessage );
+
+            Array.Copy( origMessage, message, origMessage.Length );
+
+            message[100] = 253;
+            message[101] = 199;
+
+            decoder.Decode( message );
+
+            CheckArrayEquals( origMessage, message );
+            
+        }
+
+        private static void OldEncoderTest()
+        {
+            Rs256Decoder decoder = new Rs256Decoder( 16, 11, 0x13 );
+            {
+                byte[] origMessage = { 0, 0, 0, 0, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
+                byte[] encodedMessage = { 12, 12, 3, 3, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
+                byte[] errorMessage = { 12, 12, 1, 1, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
+
+                decoder.Decode( errorMessage );
+                CheckArrayEquals( errorMessage, encodedMessage );
+            }
+
+            AntiduhDecoder oldDecoder = new AntiduhDecoder( 16, 11, 0x13 );
+            {
+                int[] origMessage = { 0, 0, 0, 0, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
+                int[] encodedMessage = { 12, 12, 3, 3, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
+                int[] errorMessage = { 12, 12, 1, 1, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
+
+                oldDecoder.Decode( errorMessage );
+
+                CheckArrayEquals( errorMessage, encodedMessage );
+            }
         }
 
         private static void PrimeFinder()
@@ -82,6 +114,55 @@ namespace ErrorCorrection
             }
 
             return true;
+        }
+
+
+        private static void CheckArrayEquals( byte[] left, byte[] right )
+        {
+            bool good = false;
+
+            try
+            {
+                if ( left.Length != right.Length )
+                {
+                    return;
+                }
+
+                for ( int i = 0; i < left.Length; i++ )
+                {
+                    if ( left[i] != right[i] )
+                    {
+                        return;
+                    }
+                }
+
+                good = true;
+            }
+            finally
+            {
+                if ( good == false )
+                {
+                    Console.Out.WriteLine( "New is broken" );
+                    Console.Out.Flush();
+                }
+            }
+        }
+
+
+        private static void CheckArrayEquals( int[] left, int[] right )
+        {
+            if ( left.Length != right.Length )
+            {
+                throw new Exception();
+            }
+
+            for ( int i = 0; i < left.Length; i++ )
+            {
+                if ( left[i] != right[i] )
+                {
+                    throw new Exception();
+                }
+            }
         }
 
     }
