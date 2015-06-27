@@ -42,7 +42,6 @@ namespace ErrorCorrection.ByteImpl
 
         public byte[] Logarithms { get; private set; }
 
-
         public byte Multiply( byte left, byte right )
         {
             return this.multTable[left, right];
@@ -51,33 +50,6 @@ namespace ErrorCorrection.ByteImpl
         public byte Divide( byte dividend, byte divisor )
         {
             return this.multTable[dividend, this.Inverses[divisor]];
-        }
-
-        private void BuildField( int fieldGenPoly )
-        {
-            this.Field = new byte[this.size];
-
-            int curr;
-            int last;
-
-            this.Field[0] = 0;
-            this.Field[1] = 1;
-
-            last = 1;
-
-            for( int i = 2; i < this.size; i++ )
-            {
-                curr = last << 1;
-
-                if( curr >= size )
-                {
-                    curr = curr ^ fieldGenPoly;
-                }
-
-                this.Field[i] = (byte)curr;
-
-                last = curr;
-            }
         }
 
         public byte[] PolyMult( byte[] left, byte[] right )
@@ -120,6 +92,33 @@ namespace ErrorCorrection.ByteImpl
             }
 
             return sum;
+        }
+
+        private void BuildField( int fieldGenPoly )
+        {
+            this.Field = new byte[this.size];
+
+            int curr;
+            int last;
+
+            this.Field[0] = 0;
+            this.Field[1] = 1;
+
+            last = 1;
+
+            for ( int i = 2; i < this.size; i++ )
+            {
+                curr = last << 1;
+
+                if ( curr >= size )
+                {
+                    curr = curr ^ fieldGenPoly;
+                }
+
+                this.Field[i] = (byte)curr;
+
+                last = curr;
+            }
         }
 
         private void BuildLogarithms()
