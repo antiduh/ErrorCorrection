@@ -75,11 +75,13 @@ namespace ErrorCorrection.ByteImpl
         public byte PolyEval( byte[] poly, byte x )
         {
             byte sum;
-            byte xLog = this.Logarithms[x];
+            byte xLog;
             byte coeffLog;
             byte power;
 
             sum = poly[0];
+
+            xLog = this.Logarithms[x];
 
             for( int i = 1; i < poly.Length; i++ )
             {
@@ -88,7 +90,7 @@ namespace ErrorCorrection.ByteImpl
                 coeffLog = this.Logarithms[poly[i]];
 
                 power = (byte)( ( coeffLog + xLog * i ) % ( size - 1 ) );
-                sum ^= this.Field[power];
+                sum ^= this.Field[power+1];
             }
 
             return sum;
