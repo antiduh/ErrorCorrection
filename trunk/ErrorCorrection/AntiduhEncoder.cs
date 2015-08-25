@@ -12,10 +12,34 @@ namespace ErrorCorrection
     using System.Text;
 
     /// <summary>
-    /// Implements Reed-solomon encoding.
+    /// Implements a Reed-Solomon encoder over GF(2^N).
     /// </summary>
     /// <remarks>
-    /// This class is not thread safe.
+    /// A block is defined as the set of data that is ultimately produced by the encoding process, such
+    /// as would be transmitted or stored. A block is composed of a string of symbols. A symbol is a single 
+    /// value that is an element from the underlying Galois field.
+    /// 
+    /// This implemention assumes a binary Galois field - that is, one of the form GF(2^N).
+    /// Since the /characteristic/ of the field is 2, symbols are binary and thus are composed of N bits.
+    /// This implementation defines addition for elements in GF(2^n) as the bitwise XOR operation, 
+    /// and multiplication by way of logarithms.
+    /// 
+    /// The size of the field is the number of elements in the Galois field. GF(2^4) can
+    /// also be represented as GF(16), and thus has 16 elements. 
+    /// 
+    /// The block size produced by Reed-Solomon encoding when using a field GF(2^N) is 
+    /// 2^n - 1; GF(2^4) == GF(16) has 15 symbols per block, and each symbol is 4 bits for a total
+    /// of 60 bits per block.
+    /// The choice of how many symbols are used to represent original data versus parity data 
+    /// is a choice of the invoker. The choice of the number of bits per symbol depends on the exponent
+    /// parameter of the field size. GF(2^N) has 2^N symbols per block and N bits per symbol.
+    ///
+    /// This implementation is compatible with "code shortening" schemes where a block of N symbols
+    /// is filled with some number of zeros, parity is computed, and only the original and parity 
+    /// chunks are transmitted. This implementation, however, does not perform any of the work to 
+    /// implement code shortening; it is the responsibility of the invoker to do so if desired.
+    ///
+    /// This class is not multi-thread safe.
     /// </remarks>
     public sealed class AntiduhEncoder
     {
