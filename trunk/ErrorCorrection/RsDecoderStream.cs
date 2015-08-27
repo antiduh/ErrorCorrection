@@ -31,35 +31,35 @@ namespace ErrorCorrection
             this.stream = stream;
             this.decoder = decoder;
 
-            this.inputBuffer = new byte[decoder.CodeWordSize];
-            this.blockBuffer = new int[decoder.CodeWordSize];
+            this.inputBuffer = new byte[decoder.BlockSize];
+            this.blockBuffer = new int[decoder.BlockSize];
 
-            this.checkSymbols = decoder.CodeWordSize - decoder.PlainTextSize;
+            this.checkSymbols = decoder.BlockSize - decoder.MessageSize;
         }
 
         public override int Read( byte[] buffer, int offset, int count )
         {
-            if( count != decoder.PlainTextSize )
+            if( count != decoder.MessageSize )
             {
                 throw new InvalidOperationException();
             }
 
-            int bytesRead = stream.Read( this.inputBuffer, 0, decoder.CodeWordSize );
+            int bytesRead = stream.Read( this.inputBuffer, 0, decoder.BlockSize );
 
             if( bytesRead == 0 )
             {
                 return 0;
             }
-            else if( bytesRead != decoder.CodeWordSize )
+            else if( bytesRead != decoder.BlockSize )
             {
                 throw new IOException( "Didn't read a whole block" );
             }
 
-            Array.Copy( this.inputBuffer, this.blockBuffer, this.decoder.CodeWordSize );
+            Array.Copy( this.inputBuffer, this.blockBuffer, this.decoder.BlockSize );
 
             this.decoder.Decode( this.blockBuffer );
 
-            for( int i = 0; i < decoder.PlainTextSize; i++ )
+            for( int i = 0; i < decoder.MessageSize; i++ )
             {
                 buffer[offset + i] = (byte)this.blockBuffer[checkSymbols + i];
             }

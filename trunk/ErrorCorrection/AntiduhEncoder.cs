@@ -54,7 +54,9 @@
     ///   * BlockSize = FieldSize - 1
     ///   * BlockSize = MessageSize + ParitySize
     /// 
-    /// This class is not multi-thread safe.
+    /// This class is not multi-thread safe, because it caches buffers used for the encoding process. 
+    /// This allows the encoder to perform the decoding process without allocating any memory beyond 
+    /// initial construction.
     /// </remarks>
     public sealed class AntiduhEncoder
     {
@@ -109,9 +111,18 @@
         /// </remarks>
         public AntiduhEncoder( int fieldSize, int messageSymbols, int paritySymbols, int fieldGenPoly )
         {
+            if( fieldSize - 1 != messageSymbols + paritySymbols )
+            {
+                throw new ArgumentOutOfRangeException(
+                    "Invalid reed-solomon block parameters were provided - " +
+                    "the number of message symbols plus the number of parity symbols " +
+                    "does not add up to the size of a block"
+                );
+            }
+
             this.fieldSize = fieldSize;
             this.messageSymbols = messageSymbols;
-            this.paritySymbols = (fieldSize - 1) - messageSymbols;
+            this.paritySymbols = paritySymbols;
             this.BlockSize = fieldSize - 1;
 
             this.gf = new GaloisField( fieldSize, fieldGenPoly );

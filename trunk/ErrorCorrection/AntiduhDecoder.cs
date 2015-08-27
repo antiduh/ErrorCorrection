@@ -1,10 +1,4 @@
-﻿// -----------------------------------------------------------------------
-// <copyright file="AntiduhDecoder.cs" company="">
-// TODO: Update copyright text.
-// </copyright>
-// -----------------------------------------------------------------------
-
-namespace ErrorCorrection
+﻿namespace ErrorCorrection
 {
     using System;
     using System.Collections.Generic;
@@ -12,16 +6,23 @@ namespace ErrorCorrection
     using System.Text;
 
     /// <summary>
-    /// TODO: Update summary.
+    /// Implements a reed-solomon decoder.
     /// </summary>
+    /// <remarks>
+    /// This class is not multi-thread safe, because it caches buffers used for the decoding process. 
+    /// This allows the decoder to perform the decoding process without allocating any memory beyond 
+    /// initial construction.
+    /// </remarks>
     public sealed class AntiduhDecoder
     {
-        private readonly GaloisField gf;
-        private readonly int size;
+        private readonly int fieldSize;
+        private readonly int messageSymbols;
+        private readonly int paritySymbols;
+        
         private readonly int fieldGenPoly;
-        private readonly int numDataSymbols;
-        private readonly int numCheckBytes;
-
+        
+        private readonly GaloisField gf;
+        
         private readonly int[] syndroms;
 
         private readonly int[] lambda;
@@ -36,36 +37,57 @@ namespace ErrorCorrection
 
         private readonly int[] chienCache;
 
-        public AntiduhDecoder( int size, int numDataSymbols, int fieldGenPoly )
+        /// <summary>
+        /// Initializes a new instance of the reed-solomon decoder.
+        /// </summary>
+        /// <param name="fieldSize">The size of the Galois field to create. Must be a value that is 
+        /// a power of two. The length of the output block is set to `fieldSize - 1`.</param>
+        /// <param name="messageSymbols">The number of original message symbols per block.</param>
+        /// <param name="paritySymbols">The number of parity symbols per block.</param>
+        /// <param name="fieldGenPoly">A value representing the field generator polynomial, 
+        /// which must be order N for a field GF(2^N).</param>
+        /// <remarks>
+        /// BlockSize is equal to `fieldSize - 1`. messageSymbols plus paritySymbols must equal BlockSize.
+        /// </remarks>
+        public AntiduhDecoder( int fieldSize, int messageSymbols, int paritySymbols, int fieldGenPoly )
         {
-            this.size = size;
-            this.numDataSymbols = numDataSymbols;
+            if( fieldSize - 1 != messageSymbols + paritySymbols )
+            {
+                throw new ArgumentOutOfRangeException(
+                    "Invalid reed-solomon block parameters were provided - " +
+                    "the number of message symbols plus the number of parity symbols " + 
+                    "does not add up to the size of a block" 
+                );
+            }
+
+            this.fieldSize = fieldSize;
+            this.messageSymbols = messageSymbols;
+            this.paritySymbols = paritySymbols;
+            this.BlockSize = fieldSize - 1;
+
             this.fieldGenPoly = fieldGenPoly;
-            this.numCheckBytes = (size - 1) - numDataSymbols;
-
-            this.CodeWordSize = size - 1;
-
-            this.gf = new GaloisField( size, fieldGenPoly );
+                        
+            this.gf = new GaloisField( fieldSize, fieldGenPoly );
 
             // Syndrom calculation buffers
-            this.syndroms = new int[numCheckBytes];
+            this.syndroms = new int[paritySymbols];
 
             // Lamda calculation buffers
-            this.lambda = new int[numCheckBytes - 1];
-            this.corrPoly = new int[numCheckBytes - 1];
-            this.lambdaStar = new int[numCheckBytes - 1];
+            this.lambda = new int[paritySymbols - 1];
+            this.corrPoly = new int[paritySymbols - 1];
+            this.lambdaStar = new int[paritySymbols - 1];
 
             // LambdaPrime calculation buffers
-            this.lambdaPrime = new int[numCheckBytes - 2];
+            this.lambdaPrime = new int[paritySymbols - 2];
 
             // Omega calculation buffers
-            this.omega = new int[numCheckBytes - 2];
+            this.omega = new int[paritySymbols - 2];
             
             // Error position calculation
-            this.errorIndexes = new int[size - 1];
+            this.errorIndexes = new int[fieldSize - 1];
 
             // Cache of the lookup used in the ChienSearch process.
-            this.chienCache = new int[size - 1];
+            this.chienCache = new int[fieldSize - 1];
 
             for( int i = 0; i < this.chienCache.Length; i++ )
             {
@@ -74,21 +96,30 @@ namespace ErrorCorrection
         }
 
         /// <summary>
-        /// The number of symbols that make up an entire received codeword, which includes parity symbols
-        /// and original message symbols.
+        /// The number of symbols that make up an entire encoded message. An encoded message is composed of the
+        /// original data symbols plus parity symbols.
         /// </summary>
-        public int CodeWordSize { get; private set; }
+        public int BlockSize { get; private set; }
 
         /// <summary>
-        /// How many symbols per code word are used for storing original message symbols.
+        /// The number of symbols per block that store original message symbols.
         /// </summary>
-        public int PlainTextSize
+        public int MessageSize
         {
-            get { return this.numDataSymbols; }
+            get { return this.messageSymbols; }
         }
 
+        /// <summary>
+        /// Discovers and corrects any errors in the block provided.
+        /// </summary>
+        /// <param name="message">A block containing a reed-solomon encoded message.</param>
         public void Decode( int[] message )
         {
+            if( message.Length != this.BlockSize )
+            {
+                throw new ArgumentException( "The provided message's size was not the size of a block" );
+            }
+
             CalcSyndromPoly( message );
             CalcLambda();
             CalcLambdaPrime();
@@ -221,7 +252,7 @@ namespace ErrorCorrection
             lambda[0] = 1;
 
 
-            while( k <= numCheckBytes )
+            while( k <= paritySymbols )
             {            
                 // --- Calculate e ---
                 e = syndroms[k - 1];
