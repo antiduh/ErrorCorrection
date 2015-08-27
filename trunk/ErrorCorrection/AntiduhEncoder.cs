@@ -1,10 +1,4 @@
-﻿// -----------------------------------------------------------------------
-// <copyright file="AntiduhEncoder.cs" company="">
-// TODO: Update copyright text.
-// </copyright>
-// -----------------------------------------------------------------------
-
-namespace ErrorCorrection
+﻿namespace ErrorCorrection
 {
     using System;
     using System.Collections.Generic;
@@ -12,15 +6,18 @@ namespace ErrorCorrection
     using System.Text;
 
     /// <summary>
-    /// Implements a Reed-Solomon encoder over GF(2^N).
+    /// Implements a Reed-Solomon encoder over the finite field GF(2^N).
     /// </summary>
     /// <remarks>
     /// A block is defined as the set of data that is ultimately produced by the encoding process, such
     /// as would be transmitted or stored. A block is composed of a string of symbols. A symbol is a single 
-    /// value that is an element from the underlying Galois field.
+    /// value that is an element from the underlying Galois field. A block is split into two parts - symbols
+    /// containing original message data, and symbols containing parity data.
     /// 
     /// This implemention assumes a binary Galois field - that is, one of the form GF(2^N).
     /// Since the /characteristic/ of the field is 2, symbols are binary and thus are composed of N bits.
+    /// A consequence of the design of finite fields is that the width of each symbol is necessarily
+    /// linked to the length of the block.
     /// This implementation defines addition for elements in GF(2^n) as the bitwise XOR operation, 
     /// and multiplication by way of logarithms.
     /// 
@@ -32,22 +29,50 @@ namespace ErrorCorrection
     /// of 60 bits per block.
     /// The choice of how many symbols are used to represent original data versus parity data 
     /// is a choice of the invoker. The choice of the number of bits per symbol depends on the exponent
-    /// parameter of the field size. GF(2^N) has 2^N symbols per block and N bits per symbol.
+    /// parameter of the field size. GF(2^N) has 2^N - 1 symbols per block and N bits per symbol. Thus
+    /// a block has N * (2^N - 1) bits.
     ///
     /// This implementation is compatible with "code shortening" schemes where a block of N symbols
     /// is filled with some number of zeros, parity is computed, and only the original and parity 
     /// chunks are transmitted. This implementation, however, does not perform any of the work to 
     /// implement code shortening; it is the responsibility of the invoker to do so if desired.
+    /// 
+    /// BlockSize 
+    ///     - the number of symbols that is ultimately produced by the encoding process.
+    ///     
+    /// MessageSize 
+    ///     - the number of symbols in the block that store original data
     ///
+    /// ParitySize
+    ///     - The number of symbols in the block that store parity data.
+    /// 
+    /// FieldSize 
+    ///     - The number of elements in the field.
+    /// 
+    /// The following relationships must hold:
+    /// 
+    ///   * BlockSize = FieldSize - 1
+    ///   * BlockSize = MessageSize + ParitySize
+    /// 
     /// This class is not multi-thread safe.
     /// </remarks>
     public sealed class AntiduhEncoder
     {
-        private readonly int size;
+        /// <summary>
+        /// The number of elements in the field.
+        /// </summary>
+        private readonly int fieldSize;
 
-        private readonly int numDataSymbols;
+        /// <summary>
+        /// The number of symbols in each output block that store the original 
+        /// message data.
+        /// </summary>
+        private readonly int messageSymbols;
 
-        private readonly int checkBytes;
+        /// <summary>
+        /// The number of symbols in each output block that store parity data.
+        /// </summary>
+        private readonly int paritySymbols;
 
         /// <summary>
         /// Stores the code generator polynomial.
@@ -64,46 +89,53 @@ namespace ErrorCorrection
         /// </summary>
         private readonly int[] modulusResult;
 
+        /// <summary>
+        /// A reference to the underlying galois field implementation used to perform
+        /// arithmetic on the Reed-Solomon blocks.
+        /// </summary>
         private readonly GaloisField gf;
 
-        public AntiduhEncoder( int size, int numDataSymbols, int fieldGenPoly )
+        /// <summary>
+        /// Initializes a new instance of the encoder.
+        /// </summary>
+        /// <param name="fieldSize">The size of the Galois field to create. Must be a value that is 
+        /// a power of two. The length of the output block is set to `fieldSize - 1`.</param>
+        /// <param name="messageSymbols">The number of original message symbols per block.</param>
+        /// <param name="paritySymbols">The number of parity symbols per block.</param>
+        /// <param name="fieldGenPoly">A value representing the field generator polynomial, 
+        /// which must be order N for a field GF(2^N).</param>
+        /// <remarks>
+        /// BlockSize is equal to `fieldSize - 1`. messageSymbols plus paritySymbols must equal BlockSize.
+        /// </remarks>
+        public AntiduhEncoder( int fieldSize, int messageSymbols, int paritySymbols, int fieldGenPoly )
         {
-            this.size = size;
-            this.numDataSymbols = numDataSymbols;
-            this.checkBytes = (size - 1) - numDataSymbols;
-            this.CodeWordSize = size - 1;
+            this.fieldSize = fieldSize;
+            this.messageSymbols = messageSymbols;
+            this.paritySymbols = (fieldSize - 1) - messageSymbols;
+            this.BlockSize = fieldSize - 1;
 
-            // symbolWidth is the number of bits per symbol, eg, GF(2^symbolWidth);
-            // Code word size n is n = 2^symbolWidth - 1
+            this.gf = new GaloisField( fieldSize, fieldGenPoly );
 
-            // Say we choose symbolWidth = 4, numDataSymbols = 11.
-            // That gives GF(2^4), n = 15, k = 11, 2t = 4.
+            this.codeGenPoly = BuildCodeGenPoly();
 
-            this.gf = new GaloisField( size, fieldGenPoly );
-
-            codeGenPoly = BuildCodeGenPoly();
-
-            this.modulusResult = new int[checkBytes];
+            this.modulusResult = new int[paritySymbols];
         }
 
 
         /// <summary>
         /// The number of symbols that make up an entire encoded message. An encoded message is composed of the
-        /// original data plus the parity bits.
+        /// original data symbols plus parity symbols.
         /// </summary>
-        public int CodeWordSize { get; private set; }
+        public int BlockSize { get; private set; }
 
         /// <summary>
-        /// The number of symbols that make up the original data.
+        /// The number of symbols that make up the original message data.
         /// </summary>
-        public int PlainTextSize
+        public int MessageSize
         {
             get
             {
-                // numDataSymbols is frequently accessed during encoding, so I want to keep its access fast. So we 
-                // store it and internally reference it via this.numDataSymbols, and provide a property to externally access it.
-                // Don't refactor this into an auto-property.
-                return this.numDataSymbols;
+                return this.messageSymbols;
             }
         }
 
@@ -111,9 +143,18 @@ namespace ErrorCorrection
         /// Initializes the code generator polynomial according to reed-solomon encoding.
         /// </summary>
         /// <remarks>
-        /// As an example, say that we were producing the code generator polynomial for 
-        /// the galois field over 2^4 with p(x) = x^4 + x + 1, and for the reed-solomon
-        /// system n = 15, k = 11, 2t = 4. 
+        /// The code generator polynomial is a polynomial over GF(2) of order N. 
+        /// The parity symbols are calculated by treating the message symbols as another
+        /// polynomial with coefficients from GF(2), and then performing polynomial division
+        /// by the code generator polynomial. The remainder polynomial from the division 
+        /// process comprises the parity symbols. In a block that contains zero errors,
+        /// performing polynomial multiplication of the parity symbols with the message
+        /// symbols returns exactly 0.
+        /// 
+        /// ...
+        /// 
+        /// Say that we were producing the code generator polynomial for the galois field over 
+        /// 2^4 with p(x) = x^4 + x + 1, and for the reed-solomon system n = 15, k = 11, 2t = 4. 
         /// 
         /// In that system, the natual code generator polynomial would be 
         /// (x + a^0)(x + a^1)(x + a^2)(x + a^3), which would be
@@ -153,7 +194,7 @@ namespace ErrorCorrection
             // This is a polynomial of degree 4, but has 5 monomials.
 
 
-            int numElements = size - numDataSymbols - 1;
+            int numElements = fieldSize - messageSymbols - 1;
 
             List<int[]> polys = new List<int[]>( (int)numElements );
 
@@ -182,14 +223,15 @@ namespace ErrorCorrection
 
         /// <summary>
         /// Transforms the provided input buffer by computing and inserting the reed-solomon
-        /// error check symbols into the array. The first 2t bytes of the array must be empty,
-        /// as these are where the check symbols will be inserted. The array must be n bytes long.
+        /// error check symbols into the array. The first `paritySymbols` elements of the array must be 
+        /// empty, as these are where the check symbols will be inserted. The array must be MessageSize 
+        /// elements long.
         /// </summary>
         /// <param name="message2"></param>
         /// <remarks>
-        /// The design of this method requires that the message leave room for the check bytes
-        /// because the '0' values of the check bytes are actually used during the encoding process.
-        /// This is actually a result of modulus over finite (galois) fields - if those bytes are
+        /// The design of this method requires that the message leave room for the parity symbols
+        /// because the '0' values of the parity symbols are actually used during the encoding process.
+        /// This is actually a result of modulus over finite (galois) fields - if those symbols are
         /// zero while performing modulus with divisor X, then remainder Y is returned.
         /// If those bytes are then filled with the value of the remainder Y, and the modulus is repeated,
         /// then the modulus returns those zero bytes. This is by definition and is part of the design of 
@@ -278,7 +320,7 @@ namespace ErrorCorrection
             // ------------ Init ----------
 
             // Clear the bytes that are supposed to be zero in the message.
-            Array.Clear( message, 0, checkBytes );
+            Array.Clear( message, 0, paritySymbols );
 
             // Step 0.1 -- Z = {0,0,0,0};
             Array.Clear( z, 0, z.Length );
@@ -290,7 +332,7 @@ namespace ErrorCorrection
             // Note, we don't run the loop on the last message byte.
             // Thats because after we process the last message byte, we don't do the z fudge crap.
             // So we do that manually after the loop, instead of putting a conditional in the loop.
-            for( int i = message.Length - 1; i > checkBytes; i-- )
+            for( int i = message.Length - 1; i > paritySymbols; i-- )
             {
                 // Step 1 -- r = z_0 - x^i
                 r = z_0 ^ message[i];
@@ -318,7 +360,7 @@ namespace ErrorCorrection
             // Perform the first part of the algorithm for the last byte.
             // We don't mess with z after processing the last message byte, so we have to 
             // perform this logic outside of the loop, or put a conditional in the loop.
-            r = z_0 ^ message[checkBytes];
+            r = z_0 ^ message[paritySymbols];
 
             // Step 2 -- Y = g'(x) * r
             // Step 3 -- Z = Z - Y

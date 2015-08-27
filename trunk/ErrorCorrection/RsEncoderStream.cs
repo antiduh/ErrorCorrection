@@ -36,10 +36,10 @@ namespace ErrorCorrection
             this.stream = stream;
             this.encoder = encoder;
 
-            this.blockBuffer = new int[encoder.CodeWordSize];
-            this.checkSymbols = encoder.CodeWordSize - encoder.PlainTextSize;
+            this.blockBuffer = new int[encoder.BlockSize];
+            this.checkSymbols = encoder.BlockSize - encoder.MessageSize;
 
-            this.outputBuffer = new byte[encoder.CodeWordSize];
+            this.outputBuffer = new byte[encoder.BlockSize];
         }
 
         public override bool CanWrite
@@ -97,7 +97,7 @@ namespace ErrorCorrection
 
         public override void Write( byte[] buffer, int offset, int count )
         {
-            if( count != this.encoder.PlainTextSize )
+            if( count != this.encoder.MessageSize )
             {
                 throw new InvalidOperationException( "RsEncoderStream only accepts writes that are exactly the size " + 
                     "of a single reed-solmon block. Use BlockStreamWriteAdapter to buffer writes of differing sizes." );
