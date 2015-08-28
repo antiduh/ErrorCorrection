@@ -17,18 +17,8 @@ namespace ErrorCorrection
         [STAThread]
         static void Main()
         {
-            //IntImplTester.PrimeFinder();
-            Galois256Tester();
+            IntImplTester.DoTests();
             Console.Out.Flush();
-        }
-
-
-
-
-        private static void Galois256Tester()
-        {
-            ByteImplTester.DoTests();
-            //IntImplTester.DoTests();
         }
 
         private static void OldEncoderTest()
@@ -43,7 +33,7 @@ namespace ErrorCorrection
                 ArrayHelpers.CheckArrayEquals( errorMessage, encodedMessage );
             }
 
-            Decoder oldDecoder = new Decoder( 16, 11, 0x13 );
+            Decoder oldDecoder = new Decoder( 16, 15, 11, 0x13 );
             {
                 int[] origMessage = { 0, 0, 0, 0, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
                 int[] encodedMessage = { 12, 12, 3, 3, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
@@ -54,7 +44,5 @@ namespace ErrorCorrection
                 ArrayHelpers.CheckArrayEquals( errorMessage, encodedMessage );
             }
         }
-
     }
-
 }
