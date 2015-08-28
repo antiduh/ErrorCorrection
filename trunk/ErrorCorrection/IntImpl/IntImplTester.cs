@@ -22,7 +22,7 @@ namespace ErrorCorrection.IntImpl
 
         public static void EncoderTest()
         {
-            AntiduhEncoder encoder = new AntiduhEncoder( 16, 11, 0x13 );
+            Encoder encoder = new Encoder( 16, 11, 0x13 );
             int[] message = { 0, 0, 0, 0, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
             int[] encodedMessage = { 12, 12, 3, 3, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
 
@@ -33,7 +33,7 @@ namespace ErrorCorrection.IntImpl
 
         public static void DecoderValidTest()
         {
-            AntiduhDecoder decoder = new AntiduhDecoder( 16, 11, 0x13 );
+            Decoder decoder = new Decoder( 16, 11, 0x13 );
             int[] message = { 12, 12, 3, 3, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
             int[] cleanMessage = { 12, 12, 3, 3, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
 
@@ -44,7 +44,7 @@ namespace ErrorCorrection.IntImpl
 
         public static void DecoderErrorTest()
         {
-            AntiduhDecoder decoder = new AntiduhDecoder( 16, 11, 0x13 );
+            Decoder decoder = new Decoder( 16, 11, 0x13 );
             // Note the errors:             v                   v
             int[] message = { 12, 12, 1, 3, 11, 10, 9, 8, 1, 6, 5, 4, 3, 2, 1 };
             int[] cleanMessage = { 12, 12, 3, 3, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
@@ -162,8 +162,8 @@ namespace ErrorCorrection.IntImpl
             private readonly int maxCorruption;
             private readonly int[] message;
             private readonly int[] cleanMessage;
-            private readonly AntiduhEncoder encoder;
-            private readonly AntiduhDecoder decoder;
+            private readonly Encoder encoder;
+            private readonly Decoder decoder;
             private readonly Random rand;
             private readonly Stopwatch watch;
 
@@ -178,8 +178,8 @@ namespace ErrorCorrection.IntImpl
                 cleanMessage = new int[size - 1];
 
                 rand = new Random();
-                encoder = new AntiduhEncoder( size, dataBytes, poly );
-                decoder = new AntiduhDecoder( size, dataBytes, poly );
+                encoder = new Encoder( size, dataBytes, poly );
+                decoder = new Decoder( size, dataBytes, poly );
 
             }
 

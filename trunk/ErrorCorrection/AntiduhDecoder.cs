@@ -13,7 +13,7 @@
     /// This allows the decoder to perform the decoding process without allocating any memory beyond 
     /// initial construction.
     /// </remarks>
-    public sealed class AntiduhDecoder
+    public sealed class Decoder
     {
         private readonly int fieldSize;
         private readonly int messageSymbols;
@@ -49,7 +49,7 @@
         /// <remarks>
         /// BlockSize is equal to `fieldSize - 1`. messageSymbols plus paritySymbols must equal BlockSize.
         /// </remarks>
-        public AntiduhDecoder( int fieldSize, int messageSymbols, int paritySymbols, int fieldGenPoly )
+        public Decoder( int fieldSize, int messageSymbols, int paritySymbols, int fieldGenPoly )
         {
             if( fieldSize - 1 != messageSymbols + paritySymbols )
             {

@@ -43,7 +43,7 @@ namespace ErrorCorrection
                 ArrayHelpers.CheckArrayEquals( errorMessage, encodedMessage );
             }
 
-            AntiduhDecoder oldDecoder = new AntiduhDecoder( 16, 11, 0x13 );
+            Decoder oldDecoder = new Decoder( 16, 11, 0x13 );
             {
                 int[] origMessage = { 0, 0, 0, 0, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
                 int[] encodedMessage = { 12, 12, 3, 3, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };

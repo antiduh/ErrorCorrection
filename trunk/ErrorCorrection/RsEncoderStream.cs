@@ -19,14 +19,14 @@ namespace ErrorCorrection
     {
         private Stream stream;
 
-        private AntiduhEncoder encoder;
+        private Encoder encoder;
 
         private int[] blockBuffer;
         private byte[] outputBuffer;
 
         private int checkSymbols;
         
-        public RsEncoderStream( Stream stream, AntiduhEncoder encoder ) : base()
+        public RsEncoderStream( Stream stream, Encoder encoder ) : base()
         {
             if( stream.CanWrite == false )
             {

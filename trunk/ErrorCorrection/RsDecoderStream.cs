@@ -18,7 +18,7 @@ namespace ErrorCorrection
     public class RsDecoderStream : Stream
     {
         private Stream stream;
-        private AntiduhDecoder decoder;
+        private Decoder decoder;
 
         private int[] blockBuffer;
 
@@ -26,7 +26,7 @@ namespace ErrorCorrection
 
         private int checkSymbols;
 
-        public RsDecoderStream( Stream stream, AntiduhDecoder decoder )
+        public RsDecoderStream( Stream stream, Decoder decoder )
         {
             this.stream = stream;
             this.decoder = decoder;

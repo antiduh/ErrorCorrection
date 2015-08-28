@@ -58,7 +58,7 @@
     /// This allows the encoder to perform the decoding process without allocating any memory beyond 
     /// initial construction.
     /// </remarks>
-    public sealed class AntiduhEncoder
+    public sealed class Encoder
     {
         /// <summary>
         /// The number of elements in the field.
@@ -109,7 +109,7 @@
         /// <remarks>
         /// BlockSize is equal to `fieldSize - 1`. messageSymbols plus paritySymbols must equal BlockSize.
         /// </remarks>
-        public AntiduhEncoder( int fieldSize, int messageSymbols, int paritySymbols, int fieldGenPoly )
+        public Encoder( int fieldSize, int messageSymbols, int paritySymbols, int fieldGenPoly )
         {
             if( fieldSize - 1 != messageSymbols + paritySymbols )
             {
