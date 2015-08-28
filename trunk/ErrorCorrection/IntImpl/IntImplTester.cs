@@ -22,7 +22,7 @@ namespace ErrorCorrection.IntImpl
 
         public static void EncoderTest()
         {
-            Encoder encoder = new Encoder( 16, 11, 0x13 );
+            Encoder encoder = new Encoder( 16, 11, 4, 0x13 );
             int[] message = { 0, 0, 0, 0, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
             int[] encodedMessage = { 12, 12, 3, 3, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
 
@@ -33,7 +33,7 @@ namespace ErrorCorrection.IntImpl
 
         public static void DecoderValidTest()
         {
-            Decoder decoder = new Decoder( 16, 11, 0x13 );
+            Decoder decoder = new Decoder( 16, 11, 4, 0x13 );
             int[] message = { 12, 12, 3, 3, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
             int[] cleanMessage = { 12, 12, 3, 3, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
 
@@ -44,7 +44,7 @@ namespace ErrorCorrection.IntImpl
 
         public static void DecoderErrorTest()
         {
-            Decoder decoder = new Decoder( 16, 11, 0x13 );
+            Decoder decoder = new Decoder( 16, 11, 4, 0x13 );
             // Note the errors:             v                   v
             int[] message = { 12, 12, 1, 3, 11, 10, 9, 8, 1, 6, 5, 4, 3, 2, 1 };
             int[] cleanMessage = { 12, 12, 3, 3, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
@@ -157,63 +157,63 @@ namespace ErrorCorrection.IntImpl
 
         private class RS256Test
         {
-            private readonly int size;
-            private readonly int checkBytes;
+            private readonly int fieldSize;
+            private readonly int paritySymbols;
             private readonly int maxCorruption;
-            private readonly int[] message;
-            private readonly int[] cleanMessage;
+            private readonly int[] transmittedMessage;
+            private readonly int[] receivedMessage;
             private readonly Encoder encoder;
             private readonly Decoder decoder;
             private readonly Random rand;
             private readonly Stopwatch watch;
 
-            public RS256Test( int size, int dataBytes, int poly, Stopwatch watch )
+            public RS256Test( int fieldSize, int messageSize, int poly, Stopwatch watch )
             {
-                this.size = size;
+                this.fieldSize = fieldSize;
                 this.watch = watch;
 
-                checkBytes = size - 1 - dataBytes;
-                maxCorruption = checkBytes / 2;
-                message = new int[size - 1];
-                cleanMessage = new int[size - 1];
+                paritySymbols = fieldSize - 1 - messageSize;
+                maxCorruption = paritySymbols / 2;
+                transmittedMessage = new int[fieldSize - 1];
+                receivedMessage = new int[fieldSize - 1];
 
                 rand = new Random();
-                encoder = new Encoder( size, dataBytes, poly );
-                decoder = new Decoder( size, dataBytes, poly );
+                encoder = new Encoder( fieldSize, messageSize, fieldSize - 1 - messageSize, poly );
+                decoder = new Decoder( fieldSize, messageSize, fieldSize - 1 - messageSize, poly );
 
             }
 
             public void RoundTripTest()
             {
-                for( int i = 0; i < message.Length; i++ )
+                for( int i = 0; i < transmittedMessage.Length; i++ )
                 {
                     // message[i] must be elements of the field. If size = 16, field elements are 0 .. 15.
                     // rand.Next(0, 16) returns elements between 0 .. 15
-                    message[i] = (byte)rand.Next( 0, (int)size );
+                    transmittedMessage[i] = (byte)rand.Next( 0, (int)fieldSize );
                 }
 
                 // ---- Encode the message ----
                 watch.Start();
-                encoder.Encode( message );
+                encoder.Encode( transmittedMessage );
                 watch.Stop();
 
-                Array.Copy( message, cleanMessage, message.Length );
+                Array.Copy( transmittedMessage, receivedMessage, transmittedMessage.Length );
 
-                // ---- Corrupt the TX message ----
+                // ---- Corrupt the message ----
                 int corruptPosition;
                 for( int i = 0; i < maxCorruption; i++ )
                 {
-                    corruptPosition = rand.Next( 0, message.Length );
-                    message[corruptPosition] = (byte)rand.Next( 0, (int)size );
+                    corruptPosition = rand.Next( 0, receivedMessage.Length );
+                    receivedMessage[corruptPosition] = (byte)rand.Next( 0, (int)fieldSize );
                 }
 
                 // ---- Repair the message ----
                 watch.Start();
-                decoder.Decode( message );
+                decoder.Decode( receivedMessage );
                 watch.Stop();
-
+                
                 // ---- Compare ----
-                ArrayHelpers.CheckArrayEquals( message, cleanMessage );
+                ArrayHelpers.CheckArrayEquals( transmittedMessage, receivedMessage );
             }
 
             private static void CheckArrayEquals( int[] left, int[] right )
