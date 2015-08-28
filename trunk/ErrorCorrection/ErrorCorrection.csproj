@@ -6,7 +6,7 @@
     <ProductVersion>8.0.30703</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{5AEE6244-AE43-4708-B6F3-205A132FB074}</ProjectGuid>
-    <OutputType>Exe</OutputType>
+    <OutputType>WinExe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>ErrorCorrection</RootNamespace>
     <AssemblyName>ErrorCorrection</AssemblyName>
@@ -71,13 +71,13 @@
     <Reference Include="System.Data" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AntiduhDecoder.cs" />
-    <Compile Include="AntiduhEncoder.cs" />
     <Compile Include="ArrayHelpers.cs" />
     <Compile Include="BlockStreamReadAdapter.cs" />
     <Compile Include="BlockStreamWriteAdapter.cs" />
     <Compile Include="ByteImpl\GaloisField256.cs" />
     <Compile Include="ByteImpl\ByteImplTester.cs" />
+    <Compile Include="Decoder.cs" />
+    <Compile Include="Encoder.cs" />
     <Compile Include="GaloisField.cs" />
     <Compile Include="IntImpl\IntImplTester.cs" />
     <Compile Include="Program.cs" />
