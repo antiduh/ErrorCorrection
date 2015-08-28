@@ -28,14 +28,38 @@ namespace ErrorCorrection
     /// field must be a size = p^k where p is prime and k is a positive integer. p is also called the 
     /// characteristic of the field.
     /// 
-    /// Arithmetic over a related field GF(p) can simply be arithmetic modulo p. Take for example GF(5), whose
-    /// elements would be {0, 1, 2, 3, 4}. 2 + 4 over the field GF(5) would be (2+4) mod 5 = 6 mod 5 = 1.
+    /// A Galois field is composed of an additive group and a multiplicative group - what it means to 
+    /// perform addition or multiplication in the field depends on the definitions of these groups for 
+    /// the field in question - the choice of what meaning to use is up to the designer of the field.
+    /// However, both groups must meet the requirements for operations in a Galois field - they must be
+    /// finite and closed.
     /// 
-    /// Arithmetic over GF(p^k) isn't as simple as taking modulus p^k, since the ring of integers
-    /// modulo p^k doesn't meet the definition of a field. Some other mechanism must be used to define
-    /// arithmetic over GF(p^k), and in fact, it is done using polynomials of elements over GF(p).
+    /// One such possible definition for addition over GF(p) (where p is prime) could be `z = (x + y) mod p`. 
+    /// Another might be `z = a XOR b` where XOR represents the bitwise exclusive-or operation. Both of these 
+    /// definitions are sufficient for defining the meaning of addition in a Galois field.
     /// 
-    /// --
+    /// The same is true for defining multiplication - in GF(p), multiplication could be defined as 
+    /// `z = (x * y ) mod p` - such a definition is finite and closed.
+    /// 
+    /// A Galois field need not be defined simply over a prime number of elements - it is possible
+    /// to define a Galois field GF(p^n) (where p is prime and n is > 1), however, providing definitions for
+    /// addition and multiplication prove a bit tricky - particularly, multiplication is the trouble maker.
+    /// Our go-to definition for multiplication over such a field might be `z = (x * y) mod p^k`, however
+    /// such a definition is not sufficient - the ring of integers modulo p^k doesn't meet the definition of
+    /// a field.
+    /// 
+    /// Instead, however, we can define the multiplicative group for our finite field in a different manner.
+    /// What if we treated the elements of GF(p^n) as polynomials over the field GF(p)? Each element in GF(p^n)
+    /// would be decomposed into a set of elements in GF(p), and those elements would be used as coefficients 
+    /// for a polynomial over GF(p).
+    /// 
+    /// Consider a galois field that uses characteristic '2', such as GF(2^4). Such a field has 16 elements, and
+    /// we could consider each element as a set of elements from GF(2) - we could consider them by their bits.
+    /// 
+    /// For instance, the element '14' from GF(2^4) could be decomposed into binary '1110'. Now we could
+    /// represent the element '14' from GF(2^4) as the polynomial '1x^3 + 1x^2 + 1x^1 + 0x^0' from GF(2).
+    /// 
+    /// Let's keep that in our pocket for now.
     /// 
     /// In Galois Fields, non-zero elements of the field form a multiplicative group that is also a cyclic
     /// group. For certain elements of the field, successive powers of these elements form a cyclic group 
@@ -46,10 +70,10 @@ namespace ErrorCorrection
     /// by the power of some primitive element a, since we can guarantee that there is a one-to-one
     /// mapping from some power a^i to some element in the field. The field can be represented in 
     /// an alternate representation { 0, a^0, a^1, ..., a^(n-2) }, which is particularly useful when
-    /// defining multiplication.
+    /// defining multiplication in some GF(p^n) as polynomials over GF(p).
     /// 
-    /// For example, consider GF(5) - this is prime group, so we can choose to define arithmetic as 
-    /// simply being addition, etc, modulo p. 
+    /// For example, consider GF(5) - this is a prime group, so we can choose to define arithmetic as 
+    /// simply being addition modulo p and multiplication modulo p.
     /// 
     /// The elements of GF(5) are {0, 1, 2, 3, 4}. 2 + 4 = 6 mod 5 = 1. 2 * 4 = 8 mod 5 = 3. 
     /// 
@@ -60,11 +84,11 @@ namespace ErrorCorrection
     ///   - 2^5 = 16 mod 5 = 1
     /// 
     /// Each element was generated, and generated only once, thus the element 2 in GF(5) is primitive in GF(5).
-    /// We can now write the elements of GF(5) index by a=2:
+    /// We can now write the elements of GF(5) indexed by a=2:
     ///  {0, a^0, a^1, a^2, a^3} =  
     ///  {0    1    2,   4,   3}
     ///
-    /// Consider GF(7), and see if 2 is a primitive element in GF(7):
+    /// Consider the field GF(7) equipped with addition/multiplication modulo 7, and see if 2 is a primitive element:
     ///  - 2^0 = 1
     ///  - 2^1 = 2
     ///  - 2^2 = 4
@@ -136,7 +160,7 @@ namespace ErrorCorrection
     /// Thus, for the field GF(2^4), with reducing polynomial x^4 + x + 1, 
     ///  7 * 6 = 1.
     ///  
-    /// We call this reducing polynomial the generator polynomial p(x).
+    /// We call this reducing polynomial the field generator polynomial p(x).
     ///
     /// --
     /// 
