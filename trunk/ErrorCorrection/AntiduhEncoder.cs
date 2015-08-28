@@ -373,18 +373,14 @@
             // perform this logic outside of the loop, or put a conditional in the loop.
             r = z_0 ^ message[paritySymbols];
 
+
+            // Combine the last iteration of steps 2 and 3 into our write into our destination array:
+
             // Step 2 -- Y = g'(x) * r
             // Step 3 -- Z = Z - Y
             for( int zIter = 0; zIter < z.Length; zIter++ )
             {
-                z[zIter] ^= gf.Multiply( g[zIter], r );
-            }
-
-
-            // Write z to the zero-bytes in the message.
-            for( int i = 0; i < z.Length; i++ )
-            {
-                message[i] = z[i];
+                message[zIter] = z[zIter] ^ gf.Multiply( g[zIter], r );
             }
         }
     }
