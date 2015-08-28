@@ -23,7 +23,7 @@ namespace ErrorCorrection.ByteImpl
             if( size > 256 )
             {
                 throw new ArgumentOutOfRangeException( 
-                    "size", "must be less than or equal to '8', the largest field this " + 
+                    "size", "must be less than or equal to '256', the largest field this " + 
                     "particular implementation is able to handle." 
                 );
             }
