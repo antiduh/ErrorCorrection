@@ -17,7 +17,7 @@ namespace ErrorCorrection
         [STAThread]
         static void Main()
         {
-            IntImplTester.DoTests();
+            IntImplTester.StreamTest();
             Console.Out.Flush();
         }
 

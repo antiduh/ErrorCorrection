@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -153,6 +154,119 @@ namespace ErrorCorrection.IntImpl
             }
 
             return true;
+        }
+
+        public static void StreamTest()
+        {
+            //                 >----- thread --->                                                           >----- thread ---->
+            //
+            // Random --> inputFile.bin --> BlockAdapter --> encoder stream --> buffer --> decoder --> BlockAdapter --> outputFile.bin
+            //                ^                                                             v
+            //                |                                                             |
+            //                I------------------------< Compare <--------------------------I
+
+            // Chain 1:
+            //   Random --> inputFile.bin
+            //
+            // Chain 2:
+            //   inputFile.bin ---thread---> BlockAdapter --> encoder stream ---> buffer
+            //                    ******
+            // Chain 3:
+            //   buffer --->  decoder ---> BlockAdapter ---thread---> outputFile.bin
+            //                                             ******
+
+            Encoder encoder = new Encoder( 256, 251, 4, 0x11d );
+            Decoder decoder = new Decoder( 256, 251, 4, 0x11d );
+            
+            // Endpoints and connectors
+            FileStream input = new FileStream( "inputFile.bin", FileMode.Create, FileAccess.ReadWrite );
+            FileStream output = new FileStream( "outputFile.bin", FileMode.Create, FileAccess.ReadWrite );
+            MemoryStream betweenBuffer = new MemoryStream( 300 * 1000 * 1000 );
+
+            RsEncoderStream encStream = new RsEncoderStream( betweenBuffer, encoder );
+            BlockStreamWriteAdapter writeAdapter = new BlockStreamWriteAdapter( encStream, encoder.MessageSize );
+
+            RsDecoderStream decStream = new RsDecoderStream( betweenBuffer, decoder );
+            BlockStreamReadAdapter readAdapter = new BlockStreamReadAdapter( decStream, decoder.MessageSize );
+            
+            Random rand = new Random();
+            byte[] buffer = new byte[251];
+
+            for ( int i = 0; i < 1000 * 1000; i++ )
+            {
+                FillBuffer( buffer, rand );
+
+                input.Write( buffer, 0, buffer.Length );
+            }
+
+            input.Flush( true );
+            input.Seek( 0, SeekOrigin.Begin );
+
+            RandomPush( input, writeAdapter, rand );
+
+            betweenBuffer.Flush();
+            betweenBuffer.Seek( 0, SeekOrigin.Begin );
+
+            RandomPush( readAdapter, output, rand );
+
+            output.Flush( true );
+
+            input.Seek( 0, SeekOrigin.Begin );
+            output.Seek( 0, SeekOrigin.Begin );
+
+            Compare( input, output );
+        }
+
+        private static void Compare( Stream left, Stream right)
+        {
+            int leftReadLen;
+            int rightReadLen;
+
+            byte[] leftBuffer = new byte[4096];
+            byte[] rightBuffer = new byte[4096];
+
+            while ( true )
+            {
+                leftReadLen = left.Read( leftBuffer, 0, leftBuffer.Length );
+                rightReadLen = right.Read( rightBuffer, 0, rightBuffer.Length );
+
+                if ( leftReadLen != rightReadLen )
+                {
+                    throw new Exception();
+                }
+
+                if ( leftReadLen == 0 )
+                {
+                    break;
+                }
+
+                ArrayHelpers.CheckArrayEquals( leftBuffer, rightBuffer );
+            }
+        }
+
+        private static void RandomPush( Stream sourceStream, Stream destStream, Random rand )
+        {
+            byte[] buffer = new byte[4096];
+            while ( true )
+            {
+                int desiredReadLen = rand.Next( 1, buffer.Length + 1 );
+                int actualReadLen = sourceStream.Read( buffer, 0, desiredReadLen );
+
+                if ( actualReadLen == 0 )
+                {
+                    break;
+                }
+
+                destStream.Write( buffer, 0, actualReadLen );
+            }
+        }
+
+        private static void FillBuffer( byte[] buffer, Random rand )
+        {
+            for ( int i = 0; i < buffer.Length; i++ )
+            {
+                buffer[i] = (byte)rand.Next( 0, 256 );
+            }
         }
 
         private class RS256Test
