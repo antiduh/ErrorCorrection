@@ -19,6 +19,8 @@ namespace ErrorCorrection.IntImpl
             PerformanceTest_GF16_4();
             PerformanceTest_GF256_16();
             PerformanceTest_GF2048_16();
+
+            StreamTest();
         }
 
         public static void EncoderTest()
