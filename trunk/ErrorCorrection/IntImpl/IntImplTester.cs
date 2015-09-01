@@ -73,7 +73,7 @@ namespace ErrorCorrection.IntImpl
         private static void PerformanceTest( string name, int size, int dataBytes, int poly )
         {
             Stopwatch watch = new Stopwatch();
-
+            int iterations = 10000;
             RS256Test test = new RS256Test( size, dataBytes, poly, watch );
 
             // Prime the JIT.
@@ -82,7 +82,7 @@ namespace ErrorCorrection.IntImpl
 
             watch.Reset();
 
-            for( int i = 0; i < 1000; i++ )
+            for ( int i = 0; i < iterations; i++ )
             {
                 test.RoundTripTest();
                 test.RoundTripTest();
@@ -95,7 +95,7 @@ namespace ErrorCorrection.IntImpl
                 test.RoundTripTest();
             }
 
-            double average = watch.Elapsed.TotalMilliseconds / ( 10 * 1000 * 1.0 );
+            double average = watch.Elapsed.TotalMilliseconds / ( 10.0 * iterations );
             double throughput = 8.0 * ( size - 1 ) / ( average * 1000.0 );
 
             Console.Out.WriteLine(
