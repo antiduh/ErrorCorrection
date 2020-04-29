@@ -35,16 +35,16 @@ namespace ErrorCorrection
         {
             this.size = size;
             this.decodedSize = decodedSize;
-            this.checkwords = (size - 1) - decodedSize;
+            this.checkwords = size - decodedSize;
 
-            this.gf = new GaloisField256( size, fieldGeneratorPoly );
+            this.gf = new GaloisField256(256, fieldGeneratorPoly );
             this.codeGenPoly = BuildCodeGenPoly();
             this.modTempResult = new byte[this.checkwords];
         }
 
         public int CheckWords { get { return this.checkwords; } }
 
-        public int EncodedSize { get { return this.size - 1; } }
+        public int EncodedSize { get { return this.size; } }
 
         public int DecodedSize { get { return this.decodedSize; } }
 
@@ -97,7 +97,7 @@ namespace ErrorCorrection
 
         private byte[] BuildCodeGenPoly()
         {
-            int numElements = size - decodedSize - 1;
+            int numElements = size - decodedSize;
 
             List<byte[]> polys = new List<byte[]>( (int)numElements );
 

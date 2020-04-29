@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ErrorCorrection.ByteImpl
 {
@@ -15,14 +12,14 @@ namespace ErrorCorrection.ByteImpl
             DecoderValidTest();
             DecoderErrorTest();
 
-            PerformanceTest_GF16_4();
-            PerformanceTest_GF256_16();
+            PerformanceTest_GF15_4();
+            PerformanceTest_GF255_16();
         }
 
         public static void EncoderTest()
         {
-            Rs256Encoder encoder = new Rs256Encoder( 16, 11, 0x13 );
-            byte[] message = { 0, 0, 0, 0, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
+            Rs256Encoder encoder = new Rs256Encoder( 15, 11, 0x13 );
+            byte[] message =         { 0,  0, 0, 0, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
             byte[] encodedMessage = { 12, 12, 3, 3, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
 
             encoder.Encode( message );
@@ -32,7 +29,7 @@ namespace ErrorCorrection.ByteImpl
 
         public static void DecoderValidTest()
         {
-            Rs256Decoder decoder = new Rs256Decoder( 16, 11, 0x13 );
+            Rs256Decoder decoder = new Rs256Decoder( 15, 11, 0x13 );
             byte[] message = { 12, 12, 3, 3, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
             byte[] cleanMessage = { 12, 12, 3, 3, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
 
@@ -43,7 +40,7 @@ namespace ErrorCorrection.ByteImpl
 
         public static void DecoderErrorTest()
         {
-            Rs256Decoder decoder = new Rs256Decoder( 16, 11, 0x13 );
+            Rs256Decoder decoder = new Rs256Decoder( 15, 11, 0x13 );
             // Note the errors:             v                   v
             byte[] message =      { 12, 12, 1, 3, 11, 10, 9, 8, 1, 6, 5, 4, 3, 2, 1 };
             byte[] cleanMessage = { 12, 12, 3, 3, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
@@ -53,14 +50,14 @@ namespace ErrorCorrection.ByteImpl
             ArrayHelpers.CheckArrayEquals( message, cleanMessage );
         }
 
-        public static void PerformanceTest_GF16_4()
+        public static void PerformanceTest_GF15_4()
         {
-            PerformanceTest( "RS256_16/4", 16, 11, 0x13 );
+            PerformanceTest( "RS256_15/4", 15, 11, 0x13 );
         }
 
-        public static void PerformanceTest_GF256_16()
+        public static void PerformanceTest_GF255_16()
         {
-            PerformanceTest( "RS256_256/16", 256, 255 - 16, 0x011d );
+            PerformanceTest( "RS256_255/16", 255, 255 - 16, 0x011d );
         }
 
         private static void PerformanceTest( string name, int size, int dataBytes, int poly )

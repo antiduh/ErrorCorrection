@@ -38,11 +38,11 @@ namespace ErrorCorrection
             this.size = size;
             this.numDataSymbols = numDataSymbols;
             this.fieldGenPoly = fieldGenPoly;
-            this.numCheckBytes = (size - 1) - numDataSymbols;
+            this.numCheckBytes = size - numDataSymbols;
 
-            this.CodeWordSize = size - 1;
+            this.CodeWordSize = size;
 
-            this.gf = new GaloisField256( size, fieldGenPoly );
+            this.gf = new GaloisField256( 256, fieldGenPoly );
 
             // Syndrom calculation buffers
             this.syndroms = new byte[numCheckBytes];
@@ -59,10 +59,10 @@ namespace ErrorCorrection
             this.omega = new byte[numCheckBytes - 2];
             
             // Error position calculation
-            this.errorIndexes = new byte[size - 1];
+            this.errorIndexes = new byte[size];
 
             // Cache of the lookup used in the ChienSearch process.
-            this.chienCache = new byte[size - 1];
+            this.chienCache = new byte[size];
 
             for( int i = 0; i < this.chienCache.Length; i++ )
             {
